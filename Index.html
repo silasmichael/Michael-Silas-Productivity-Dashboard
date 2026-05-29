@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Michael's Productivity Dashboard</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&family=Lora:ital,wght@0,400;0,500;1,400&display=swap" rel="stylesheet">
 <style>
   :root { --gold:#E8C547; --bg:#0c0c0c; --bg2:#131313; --border:#222; --text:#e8e0d0; --muted:#666; --green:#4a9a4a; }
@@ -122,9 +123,30 @@
   .emoji-picker { display:flex; flex-wrap:wrap; gap:7px; background:var(--bg2); border:1px solid var(--border); border-radius:8px; padding:10px; margin-bottom:4px; }
   .emoji-opt { font-size:20px; cursor:pointer; padding:4px; border-radius:6px; transition:background 0.15s; }
   .emoji-opt:hover,.emoji-opt.selected { background:#2a2a2a; }
+
+  .loading-overlay { display:none; position:fixed; inset:0; background:rgba(12,12,12,0.8); z-index:200; align-items:center; justify-content:center; flex-direction:column; gap:12px; }
+  .loading-overlay.show { display:flex; }
+  .spinner { width:32px; height:32px; border:2px solid #222; border-top-color:var(--gold); border-radius:50%; animation:spin 0.7s linear infinite; }
+  @keyframes spin { to { transform:rotate(360deg); } }
+  .loading-text { font-size:12px; color:#555; letter-spacing:1px; text-transform:uppercase; }
+  .sync-badge { position:fixed; bottom:16px; right:16px; background:var(--bg2); border:1px solid var(--border); border-radius:20px; padding:6px 12px; font-size:10px; color:#444; letter-spacing:1px; text-transform:uppercase; z-index:50; display:flex; align-items:center; gap:6px; }
+  .sync-dot { width:6px; height:6px; border-radius:50%; background:#444; }
+  .sync-dot.green { background:var(--green); }
+  .sync-dot.yellow { background:#886633; animation:pulse 1.5s infinite; }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.3} }
+
 </style>
 </head>
 <body>
+
+<div class="loading-overlay" id="loadingOverlay">
+  <div class="spinner"></div>
+  <div class="loading-text">Syncing...</div>
+</div>
+<div class="sync-badge" id="syncBadge">
+  <div class="sync-dot green" id="syncDot"></div>
+  <span id="syncText">Synced</span>
+</div>
 
 <!-- EDIT ENTRY MODAL -->
 <div class="modal-overlay" id="editModal">
@@ -237,7 +259,132 @@
   </div>
 </div>
 
+</html>
+
 <script>
+// ── Supabase ──────────────────────────────────
+const SUPABASE_URL = 'https://puzogmzjhttrooofggbo.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_xtT7jEdVAwrIj9450jy2Sg_alK9AuaG';
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+// Persistent anonymous user ID
+function getUserId() {
+  let id = localStorage.getItem('msilas-uid');
+  if (!id) { id = 'user_' + Math.random().toString(36).slice(2) + Date.now().toString(36); localStorage.setItem('msilas-uid', id); }
+  return id;
+}
+const USER_ID = getUserId();
+
+// Sync status
+function setSyncing() {
+  document.getElementById('syncDot').className = 'sync-dot yellow';
+  document.getElementById('syncText').textContent = 'Saving...';
+}
+function setSynced() {
+  document.getElementById('syncDot').className = 'sync-dot green';
+  document.getElementById('syncText').textContent = 'Synced';
+}
+function setError() {
+  document.getElementById('syncDot').className = 'sync-dot';
+  document.getElementById('syncText').textContent = 'Offline';
+}
+
+function showLoading() { document.getElementById('loadingOverlay').classList.add('show'); }
+function hideLoading() { document.getElementById('loadingOverlay').classList.remove('show'); }
+
+// ── Local cache (fallback) ────────────────────
+function cacheSet(key, val) { try { localStorage.setItem(key, JSON.stringify(val)); } catch {} }
+function cacheGet(key, def) { try { const v = localStorage.getItem(key); return v ? JSON.parse(v) : def; } catch { return def; } }
+
+// ── Logs ──────────────────────────────────────
+async function loadLogs() {
+  try {
+    const { data, error } = await sb.from('activity_logs').select('date,entries').eq('user_id', USER_ID);
+    if (error) throw error;
+    const logs = {};
+    data.forEach(row => { logs[row.date] = row.entries; });
+    cacheSet('msilas-logs', logs);
+    return logs;
+  } catch {
+    setError();
+    return cacheGet('msilas-logs', {});
+  }
+}
+
+async function saveLog(date, entries) {
+  setSyncing();
+  const logs = cacheGet('msilas-logs', {});
+  logs[date] = entries;
+  cacheSet('msilas-logs', logs);
+  try {
+    const { error } = await sb.from('activity_logs').upsert({ user_id: USER_ID, date, entries, updated_at: new Date().toISOString() }, { onConflict: 'user_id,date' });
+    if (error) throw error;
+    setSynced();
+  } catch { setError(); }
+}
+
+// ── Categories ────────────────────────────────
+async function loadCats() {
+  try {
+    const { data, error } = await sb.from('custom_categories').select('key,label,icon').eq('user_id', USER_ID);
+    if (error) throw error;
+    const cats = {};
+    data.forEach(row => { cats[row.key] = { label: row.label, icon: row.icon }; });
+    cacheSet('msilas-cats', cats);
+    return cats;
+  } catch {
+    return cacheGet('msilas-cats', {});
+  }
+}
+
+async function saveCat(key, label, icon) {
+  setSyncing();
+  const cats = cacheGet('msilas-cats', {});
+  cats[key] = { label, icon };
+  cacheSet('msilas-cats', cats);
+  try {
+    const { error } = await sb.from('custom_categories').upsert({ user_id: USER_ID, key, label, icon }, { onConflict: 'user_id,key' });
+    if (error) throw error;
+    setSynced();
+  } catch { setError(); }
+}
+
+// ── Projects ──────────────────────────────────
+async function loadProjs() {
+  try {
+    const { data, error } = await sb.from('projects').select('*').eq('user_id', USER_ID).order('created_at');
+    if (error) throw error;
+    cacheSet('msilas-projs', data);
+    return data;
+  } catch {
+    return cacheGet('msilas-projs', []);
+  }
+}
+
+async function saveProj(proj, id) {
+  setSyncing();
+  try {
+    if (id) {
+      const { error } = await sb.from('projects').update({ name: proj.name, description: proj.desc, status: proj.status }).eq('id', id).eq('user_id', USER_ID);
+      if (error) throw error;
+    } else {
+      const { error } = await sb.from('projects').insert({ user_id: USER_ID, name: proj.name, description: proj.desc, status: proj.status });
+      if (error) throw error;
+    }
+    setSynced();
+  } catch { setError(); }
+}
+
+async function deleteProj(id) {
+  setSyncing();
+  try {
+    const { error } = await sb.from('projects').delete().eq('id', id).eq('user_id', USER_ID);
+    if (error) throw error;
+    setSynced();
+  } catch { setError(); }
+}
+
+// ── Habits ────────────────────────────────────
 const HABITS_DEFAULT = {
   writing:      { label:"Writing / Editing",   icon:"✍️" },
   animation:    { label:"Animation",            icon:"🎬" },
@@ -251,6 +398,8 @@ const HABITS_DEFAULT = {
   epicenter:    { label:"Epicenter of Life",    icon:"🌍" },
   other:        { label:"Other",                icon:"⚡" },
 };
+
+function allHabits() { return Object.assign({}, HABITS_DEFAULT, cacheGet('msilas-cats', {})); }
 
 const SKILLS = [
   { id:"writing",   label:"Writing",    sub:"Poetry & Books",   cx:220, cy:62  },
@@ -281,18 +430,12 @@ const CONNECTIONS = [
 const EMOJI_OPTIONS = ['🎯','🔥','💡','🎙️','🙏','💪','🧘','🏃','🎵','✏️','🎤','📝','🧠','💬','🌱','⭐','🎓','🛠️','📊','💼'];
 let selectedEmoji = '⭐';
 let editingEntryIndex = -1;
-let editingProjectIndex = -1;
+let editingProject = null;
 let activeSkill = null;
+let allLogs = {};
+let allProjects = [];
 
-// Storage
-function loadLogs()    { try { return JSON.parse(localStorage.getItem('msilas-logs') || '{}'); } catch { return {}; } }
-function saveLogs(d)   { try { localStorage.setItem('msilas-logs', JSON.stringify(d)); } catch {} }
-function loadCats()    { try { return JSON.parse(localStorage.getItem('msilas-cats') || '{}'); } catch { return {}; } }
-function saveCats(d)   { try { localStorage.setItem('msilas-cats', JSON.stringify(d)); } catch {} }
-function loadProjs()   { try { return JSON.parse(localStorage.getItem('msilas-projs') || '[]'); } catch { return []; } }
-function saveProjs(d)  { try { localStorage.setItem('msilas-projs', JSON.stringify(d)); } catch {} }
-function allHabits()   { return Object.assign({}, HABITS_DEFAULT, loadCats()); }
-function todayKey()    { return new Date().toISOString().split('T')[0]; }
+function todayKey() { return new Date().toISOString().split('T')[0]; }
 function last30() {
   const days = [], t = new Date();
   for (let i = 29; i >= 0; i--) { const d = new Date(t); d.setDate(t.getDate() - i); days.push(d.toISOString().split('T')[0]); }
@@ -311,7 +454,6 @@ function calcStreak(logs) {
   return n;
 }
 
-// Populate selects
 function populateSelects() {
   const opts = Object.entries(allHabits()).map(([k,v]) => `<option value="${k}">${v.icon} ${v.label}</option>`).join('');
   ['categorySelect','modalCategory'].forEach(id => {
@@ -323,21 +465,18 @@ function populateSelects() {
   });
 }
 
-// Render stats + today + 30 days
 function renderAll() {
-  const logs = loadLogs();
   const today = todayKey();
-  const entries = logs[today] || [];
+  const entries = allLogs[today] || [];
   const days = last30();
 
   document.getElementById('headerDate').textContent = fmtDate(today);
-  const activeDays = days.filter(d => logs[d] && logs[d].length > 0).length;
-  const total = days.reduce((s, d) => s + (logs[d] ? logs[d].length : 0), 0);
-  document.getElementById('streakNum').textContent = calcStreak(logs);
+  const activeDays = days.filter(d => allLogs[d] && allLogs[d].length > 0).length;
+  const total = days.reduce((s, d) => s + (allLogs[d] ? allLogs[d].length : 0), 0);
+  document.getElementById('streakNum').textContent = calcStreak(allLogs);
   document.getElementById('activeDaysNum').textContent = activeDays;
   document.getElementById('totalThingsNum').textContent = total;
 
-  // Today list
   const list = document.getElementById('todoList');
   const empty = document.getElementById('emptyState');
   list.innerHTML = '';
@@ -360,11 +499,10 @@ function renderAll() {
     list.appendChild(li);
   });
 
-  // 30 days
   const grid = document.getElementById('daysGrid');
   grid.innerHTML = '';
   days.forEach(day => {
-    const ents = logs[day] || [];
+    const ents = allLogs[day] || [];
     const isToday = day === today;
     const cell = document.createElement('div');
     cell.className = 'day-cell' + (ents.length > 0 ? ' has-entries' : '') + (isToday ? ' is-today' : '');
@@ -374,29 +512,56 @@ function renderAll() {
   });
 }
 
-// Entry actions
-function addEntry() {
+function renderProjects() {
+  const list = document.getElementById('projectsList');
+  list.innerHTML = '';
+  if (allProjects.length === 0) {
+    list.innerHTML = '<li style="color:#2a2a2a;font-size:13px;font-style:italic;padding:10px 0;">No projects yet.</li>';
+    return;
+  }
+  allProjects.forEach((p) => {
+    const isActive = p.status === 'active';
+    const li = document.createElement('li');
+    li.className = 'project-item';
+    li.innerHTML = `
+      <div class="proj-dot" style="background:${isActive ? '#4a9a4a' : '#886633'}"></div>
+      <div class="proj-content">
+        <div class="proj-name">${p.name}</div>
+        ${p.description ? `<div class="proj-desc">${p.description}</div>` : ''}
+        <div class="proj-status ${isActive ? 'status-active' : 'status-paused'}">${isActive ? '● Active' : '● Paused'}</div>
+      </div>
+      <div class="proj-btns">
+        <button class="icon-btn" onclick="openProjectModal('${p.id}')">✎</button>
+        <button class="icon-btn del" onclick="handleDeleteProject('${p.id}')">×</button>
+      </div>`;
+    list.appendChild(li);
+  });
+}
+
+async function addEntry() {
   const input = document.getElementById('activityInput');
   const text = input.value.trim();
   const cat = document.getElementById('categorySelect').value;
-  const logs = loadLogs();
   const today = todayKey();
-  if (!logs[today]) logs[today] = [];
-  logs[today].push({ text, category: cat, timestamp: new Date().toISOString() });
-  saveLogs(logs);
+  if (!allLogs[today]) allLogs[today] = [];
+  allLogs[today].push({ text, category: cat, timestamp: new Date().toISOString() });
   input.value = '';
   renderAll();
+  await saveLog(today, allLogs[today]);
 }
 
-function deleteEntry(i) {
-  const logs = loadLogs();
+async function deleteEntry(i) {
   const today = todayKey();
-  if (logs[today]) { logs[today].splice(i, 1); saveLogs(logs); renderAll(); }
+  if (allLogs[today]) {
+    allLogs[today].splice(i, 1);
+    renderAll();
+    await saveLog(today, allLogs[today]);
+  }
 }
 
 function openEditEntry(i) {
-  const logs = loadLogs();
-  const entry = (logs[todayKey()] || [])[i];
+  const entries = allLogs[todayKey()] || [];
+  const entry = entries[i];
   if (!entry) return;
   editingEntryIndex = i;
   document.getElementById('modalText').value = entry.text || '';
@@ -406,20 +571,18 @@ function openEditEntry(i) {
   setTimeout(() => document.getElementById('modalText').focus(), 100);
 }
 
-function saveEdit() {
+async function saveEdit() {
   if (editingEntryIndex < 0) return;
-  const logs = loadLogs();
   const today = todayKey();
-  if (!logs[today] || !logs[today][editingEntryIndex]) return;
-  logs[today][editingEntryIndex].text = document.getElementById('modalText').value.trim();
-  logs[today][editingEntryIndex].category = document.getElementById('modalCategory').value;
-  saveLogs(logs);
+  if (!allLogs[today] || !allLogs[today][editingEntryIndex]) return;
+  allLogs[today][editingEntryIndex].text = document.getElementById('modalText').value.trim();
+  allLogs[today][editingEntryIndex].category = document.getElementById('modalCategory').value;
   closeModal('editModal');
   editingEntryIndex = -1;
   renderAll();
+  await saveLog(today, allLogs[today]);
 }
 
-// Category actions
 function openAddCatModal() {
   selectedEmoji = '⭐';
   document.getElementById('newCatName').value = '';
@@ -438,54 +601,29 @@ function selectEmoji(emoji, el) {
   document.getElementById('newCatIcon').value = '';
 }
 
-function saveNewCategory() {
+async function saveNewCategory() {
   const name = document.getElementById('newCatName').value.trim();
   if (!name) { document.getElementById('newCatName').focus(); return; }
   const icon = document.getElementById('newCatIcon').value.trim() || selectedEmoji;
   const key = 'custom_' + Date.now();
-  const cats = loadCats();
-  cats[key] = { label: name, icon };
-  saveCats(cats);
-  populateSelects();
   closeModal('addCatModal');
+  populateSelects();
+  await saveCat(key, name, icon);
+  const cats = await loadCats();
+  cacheSet('msilas-cats', cats);
+  populateSelects();
 }
 
-// Project actions
-function renderProjects() {
-  const projects = loadProjs();
-  const list = document.getElementById('projectsList');
-  list.innerHTML = '';
-  if (projects.length === 0) {
-    list.innerHTML = '<li style="color:#2a2a2a;font-size:13px;font-style:italic;padding:10px 0;">No projects yet.</li>';
-    return;
-  }
-  projects.forEach((p, i) => {
-    const isActive = p.status === 'active';
-    const li = document.createElement('li');
-    li.className = 'project-item';
-    li.innerHTML = `
-      <div class="proj-dot" style="background:${isActive ? '#4a9a4a' : '#886633'}"></div>
-      <div class="proj-content">
-        <div class="proj-name">${p.name}</div>
-        ${p.desc ? `<div class="proj-desc">${p.desc}</div>` : ''}
-        <div class="proj-status ${isActive ? 'status-active' : 'status-paused'}">${isActive ? '● Active' : '● Paused'}</div>
-      </div>
-      <div class="proj-btns">
-        <button class="icon-btn" onclick="openProjectModal(${i})">✎</button>
-        <button class="icon-btn del" onclick="deleteProject(${i})">×</button>
-      </div>`;
-    list.appendChild(li);
-  });
-}
-
-function openProjectModal(i) {
-  editingProjectIndex = i;
-  document.getElementById('projModalTitle').textContent = i >= 0 ? 'Edit Project' : 'New Project';
-  if (i >= 0) {
-    const p = loadProjs()[i];
-    document.getElementById('projName').value = p.name || '';
-    document.getElementById('projDesc').value = p.desc || '';
-    document.getElementById('projStatus').value = p.status || 'active';
+function openProjectModal(id) {
+  editingProject = id || null;
+  document.getElementById('projModalTitle').textContent = id ? 'Edit Project' : 'New Project';
+  if (id) {
+    const p = allProjects.find(p => p.id === id);
+    if (p) {
+      document.getElementById('projName').value = p.name || '';
+      document.getElementById('projDesc').value = p.description || '';
+      document.getElementById('projStatus').value = p.status || 'active';
+    }
   } else {
     document.getElementById('projName').value = '';
     document.getElementById('projDesc').value = '';
@@ -495,27 +633,23 @@ function openProjectModal(i) {
   setTimeout(() => document.getElementById('projName').focus(), 100);
 }
 
-function saveProject() {
+async function saveProject() {
   const name = document.getElementById('projName').value.trim();
   if (!name) { document.getElementById('projName').focus(); return; }
-  const entry = { name, desc: document.getElementById('projDesc').value.trim(), status: document.getElementById('projStatus').value };
-  const projects = loadProjs();
-  if (editingProjectIndex >= 0) projects[editingProjectIndex] = entry;
-  else projects.push(entry);
-  saveProjs(projects);
+  const proj = { name, desc: document.getElementById('projDesc').value.trim(), status: document.getElementById('projStatus').value };
   closeModal('projectModal');
-  editingProjectIndex = -1;
+  await saveProj(proj, editingProject);
+  editingProject = null;
+  allProjects = await loadProjs();
   renderProjects();
 }
 
-function deleteProject(i) {
-  const projects = loadProjs();
-  projects.splice(i, 1);
-  saveProjs(projects);
+async function handleDeleteProject(id) {
+  await deleteProj(id);
+  allProjects = allProjects.filter(p => p.id !== id);
   renderProjects();
 }
 
-// Modal helpers
 function openModal(id)  { document.getElementById(id).classList.add('open'); }
 function closeModal(id) { document.getElementById(id).classList.remove('open'); }
 document.querySelectorAll('.modal-overlay').forEach(el => {
@@ -535,7 +669,6 @@ function buildMap() {
     line.classList.add('conn-line'); line.style.transition = 'all 0.25s';
     svg.appendChild(line);
   });
-
   const cg = document.createElementNS('http://www.w3.org/2000/svg','g');
   const cc = document.createElementNS('http://www.w3.org/2000/svg','circle');
   cc.setAttribute('cx',220); cc.setAttribute('cy',220); cc.setAttribute('r',42);
@@ -549,7 +682,6 @@ function buildMap() {
   };
   cg.appendChild(cc); cg.appendChild(mkT(214,'BUILD')); cg.appendChild(mkT(230,'ANYWAY'));
   svg.appendChild(cg);
-
   SKILLS.forEach(s => {
     const g = document.createElementNS('http://www.w3.org/2000/svg','g');
     g.classList.add('skill-node'); g.dataset.id = s.id; g.style.cursor = 'pointer';
@@ -607,12 +739,28 @@ function toggleSkill(id) {
   </div>`;
 }
 
-// Init
-buildMap();
-toggleSkill(null);
-populateSelects();
-renderAll();
-renderProjects();
+// ── Init ──────────────────────────────────────
+async function init() {
+  showLoading();
+  buildMap();
+  toggleSkill(null);
+  try {
+    const [logs, cats, projs] = await Promise.all([loadLogs(), loadCats(), loadProjs()]);
+    allLogs = logs;
+    allProjects = projs;
+    cacheSet('msilas-cats', cats);
+    setSynced();
+  } catch {
+    allLogs = cacheGet('msilas-logs', {});
+    allProjects = cacheGet('msilas-projs', []);
+    setError();
+  }
+  populateSelects();
+  renderAll();
+  renderProjects();
+  hideLoading();
+}
+
+init();
 </script>
 </body>
-</html>
