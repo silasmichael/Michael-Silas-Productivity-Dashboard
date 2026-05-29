@@ -192,7 +192,7 @@
 
   <div class="desktop-grid">
 
-    <!-- LEFT: Skills Map + Today -->
+    <!-- LEFT: Skills Map + Projects -->
     <div class="desktop-left">
 
       <div class="section">
@@ -202,10 +202,17 @@
       <svg id="skillMap" viewBox="0 0 440 440"></svg>
       <div id="connectionInfo"></div>
 
+      <div class="section" style="margin-top:16px;">
+        <div class="section-label">Current Projects</div>
+      </div>
+      <ul class="projects-list" id="projectsList"></ul>
+      <button class="add-proj-btn" onclick="openProjectModal(-1)">+ Add Project</button>
+
     </div>
 
-    <!-- RIGHT: Today + 30 Days + Projects -->
+    <!-- RIGHT: Today + 30 Days -->
     <div class="desktop-right">
+
       <div class="section">
         <div class="section-label">Today</div>
       </div>
@@ -220,17 +227,10 @@
       <ul class="todo-list" id="todoList"></ul>
       <div class="empty-state" id="emptyState">Nothing logged yet. Add your first entry above.</div>
 
-
       <div class="section" style="margin-top:16px;">
         <div class="section-label">Last 30 Days</div>
       </div>
       <div class="days-grid" id="daysGrid"></div>
-
-      <div class="section" style="margin-top:16px;">
-        <div class="section-label">Current Projects</div>
-      </div>
-      <ul class="projects-list" id="projectsList"></ul>
-      <button class="add-proj-btn" onclick="openProjectModal(-1)">+ Add Project</button>
 
     </div>
 
