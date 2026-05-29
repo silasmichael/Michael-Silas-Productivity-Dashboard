@@ -1,0 +1,632 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Michael's Productivity Dashboard</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&family=Lora:ital,wght@0,400;0,500;1,400&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --gold: #E8C547;
+    --bg: #0c0c0c;
+    --bg2: #131313;
+    --bg3: #1a1a1a;
+    --border: #222;
+    --text: #e8e0d0;
+    --muted: #666;
+    --green: #4a9a4a;
+    --green-bg: #0d160d;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Lora', serif;
+    min-height: 100vh;
+    max-width: 480px;
+    margin: 0 auto;
+  }
+
+  /* HEADER */
+  .header { padding: 26px 20px 14px; border-bottom: 1px solid var(--border); }
+  .header-eyebrow { font-size: 10px; letter-spacing: 3px; color: #444; text-transform: uppercase; margin-bottom: 4px; }
+  .header-name { font-family: 'Playfair Display', serif; font-size: 24px; color: var(--gold); font-weight: 700; }
+  .header-mission { font-size: 11px; color: #444; margin-top: 4px; font-style: italic; }
+
+  /* TABS */
+  .tabs { display: flex; border-bottom: 1px solid var(--border); position: sticky; top: 0; background: var(--bg); z-index: 10; }
+  .tab { flex: 1; padding: 13px 4px; background: none; border: none; border-bottom: 2px solid transparent; color: #444; font-size: 10px; letter-spacing: 1.5px; text-transform: uppercase; cursor: pointer; font-family: 'Lora', serif; transition: color 0.2s, border-color 0.2s; }
+  .tab.active { color: var(--gold); border-bottom-color: var(--gold); }
+
+  /* PANELS */
+  .panel { display: none; padding: 20px 16px; }
+  .panel.active { display: block; }
+
+  /* MAP */
+  .map-hint { font-size: 11px; color: #444; text-align: center; margin-bottom: 14px; font-style: italic; }
+  .map-wrap { position: relative; width: 100%; padding-bottom: 100%; margin-bottom: 20px; }
+  #skillMap { position: absolute; top: 0; left: 0; width: 100%; height: 100%; }
+  .connection-info { background: var(--bg2); border: 1px solid var(--border); border-left: 3px solid var(--gold); border-radius: 8px; padding: 16px; }
+  .connection-title { font-family: 'Playfair Display', serif; font-size: 15px; color: var(--gold); margin-bottom: 12px; }
+  .connection-item { display: flex; gap: 10px; margin-bottom: 10px; align-items: flex-start; }
+  .connection-dot { width: 5px; height: 5px; border-radius: 50%; background: var(--gold); margin-top: 6px; flex-shrink: 0; }
+  .connection-other { color: var(--text); font-size: 13px; }
+  .connection-label { color: #444; font-size: 12px; }
+  .clear-btn { margin-top: 12px; background: none; border: 1px solid var(--border); border-radius: 4px; color: var(--muted); font-size: 11px; padding: 6px 14px; cursor: pointer; font-family: 'Lora', serif; transition: color 0.2s, border-color 0.2s; }
+  .clear-btn:hover { color: var(--gold); border-color: var(--gold); }
+  .map-tagline { text-align: center; color: #222; font-size: 12px; font-style: italic; }
+
+  /* TRACKER */
+  .streak-display { text-align: center; margin-bottom: 24px; }
+  .streak-number { font-family: 'Playfair Display', serif; font-size: 60px; color: var(--gold); line-height: 1; }
+  .streak-label { font-size: 10px; letter-spacing: 2px; color: #444; text-transform: uppercase; margin-top: 4px; }
+  .today-date { font-size: 11px; color: var(--muted); text-align: center; margin-bottom: 16px; letter-spacing: 1px; text-transform: uppercase; }
+
+  .add-form { display: flex; gap: 8px; margin-bottom: 10px; }
+  .add-input { flex: 1; background: var(--bg2); border: 1px solid var(--border); border-radius: 8px; padding: 11px 14px; color: var(--text); font-size: 13px; font-family: 'Lora', serif; outline: none; transition: border-color 0.2s; }
+  .add-input:focus { border-color: var(--gold); }
+  .add-input::placeholder { color: #333; }
+  .add-btn { background: var(--gold); border: none; border-radius: 8px; padding: 11px 18px; color: #0c0c0c; font-size: 20px; cursor: pointer; font-weight: bold; transition: background 0.2s; flex-shrink: 0; line-height: 1; }
+  .add-btn:hover { background: #f0d060; }
+
+  .category-select { width: 100%; background: var(--bg2); border: 1px solid var(--border); border-radius: 8px; padding: 11px 14px; color: var(--text); font-size: 13px; font-family: 'Lora', serif; outline: none; margin-bottom: 16px; cursor: pointer; appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%23666' stroke-width='1.5' fill='none'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 14px center; }
+  .category-select:focus { border-color: var(--gold); }
+  .category-select option { background: #1a1a1a; }
+
+  .todo-list { list-style: none; margin-bottom: 8px; }
+  .todo-item { display: flex; align-items: flex-start; gap: 10px; padding: 13px 14px; background: var(--bg2); border: 1px solid var(--border); border-radius: 8px; margin-bottom: 8px; animation: slideIn 0.2s ease; }
+  @keyframes slideIn { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: translateY(0); } }
+  .todo-icon { font-size: 17px; flex-shrink: 0; margin-top: 1px; }
+  .todo-content { flex: 1; min-width: 0; }
+  .todo-category { font-size: 10px; color: var(--gold); letter-spacing: 1px; text-transform: uppercase; margin-bottom: 2px; }
+  .todo-text { font-size: 13px; color: var(--text); line-height: 1.4; word-break: break-word; }
+  .todo-time { font-size: 10px; color: #333; margin-top: 3px; }
+  .todo-actions { display: flex; flex-direction: column; gap: 6px; flex-shrink: 0; }
+  .todo-action-btn { background: none; border: none; color: #333; font-size: 13px; cursor: pointer; padding: 2px 4px; line-height: 1; transition: color 0.2s; }
+  .todo-action-btn:hover { color: var(--gold); }
+  .todo-action-btn.del:hover { color: #a04040; }
+
+  .empty-state { text-align: center; color: #2a2a2a; font-size: 13px; font-style: italic; padding: 28px 0; }
+
+  /* EDIT MODAL */
+  .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.85); z-index: 100; align-items: center; justify-content: center; padding: 20px; }
+  .modal-overlay.open { display: flex; }
+  .modal { background: #161616; border: 1px solid #2a2a2a; border-top: 3px solid var(--gold); border-radius: 12px; padding: 24px; width: 100%; max-width: 400px; animation: modalIn 0.2s ease; }
+  @keyframes modalIn { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
+  .modal-title { font-family: 'Playfair Display', serif; font-size: 17px; color: var(--gold); margin-bottom: 20px; }
+  .modal-label { font-size: 11px; color: #555; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 6px; display: block; }
+  .modal-input { width: 100%; background: var(--bg2); border: 1px solid var(--border); border-radius: 8px; padding: 12px 14px; color: var(--text); font-size: 14px; font-family: 'Lora', serif; outline: none; margin-bottom: 16px; transition: border-color 0.2s; }
+  .modal-input:focus { border-color: var(--gold); }
+  .modal-select { width: 100%; background: var(--bg2); border: 1px solid var(--border); border-radius: 8px; padding: 12px 14px; color: var(--text); font-size: 14px; font-family: 'Lora', serif; outline: none; margin-bottom: 20px; cursor: pointer; appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%23666' stroke-width='1.5' fill='none'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 14px center; }
+  .modal-select:focus { border-color: var(--gold); }
+  .modal-select option { background: #1a1a1a; }
+  .modal-buttons { display: flex; gap: 10px; }
+  .modal-save { flex: 1; background: var(--gold); border: none; border-radius: 8px; padding: 13px; color: #0c0c0c; font-size: 14px; font-family: 'Playfair Display', serif; font-weight: 700; cursor: pointer; transition: background 0.2s; }
+  .modal-save:hover { background: #f0d060; }
+  .modal-cancel { flex: 1; background: none; border: 1px solid var(--border); border-radius: 8px; padding: 13px; color: #555; font-size: 14px; font-family: 'Lora', serif; cursor: pointer; transition: color 0.2s, border-color 0.2s; }
+  .modal-cancel:hover { color: var(--text); border-color: #555; }
+
+  /* 30 DAYS */
+  .days-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 5px; margin-bottom: 20px; }
+  .day-cell { aspect-ratio: 1; border-radius: 4px; background: var(--bg2); border: 1px solid var(--border); display: flex; align-items: center; justify-content: center; position: relative; }
+  .day-cell.has-entries { background: var(--gold); border-color: var(--gold); }
+  .day-cell.is-today:not(.has-entries) { border-color: var(--gold); }
+  .today-dot { width: 4px; height: 4px; border-radius: 50%; background: var(--gold); }
+  .day-count { font-size: 10px; color: #0c0c0c; font-weight: bold; font-family: 'Playfair Display', serif; }
+  .day-tooltip { display: none; position: absolute; bottom: calc(100% + 6px); left: 50%; transform: translateX(-50%); background: #1a1a1a; border: 1px solid var(--border); border-radius: 4px; padding: 5px 8px; font-size: 10px; color: var(--text); white-space: nowrap; z-index: 20; pointer-events: none; }
+  .day-cell:hover .day-tooltip { display: block; }
+  .stats-row { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; margin-bottom: 20px; }
+  .stat-box { background: var(--bg2); border-radius: 8px; padding: 14px; text-align: center; }
+  .stat-number { font-family: 'Playfair Display', serif; font-size: 26px; color: var(--gold); font-weight: 700; }
+  .stat-number.dim { color: #333; }
+  .stat-label { font-size: 9px; color: #444; margin-top: 2px; text-transform: uppercase; letter-spacing: 1px; }
+  .legend { border-top: 1px solid var(--border); padding-top: 16px; }
+  .legend-title { font-size: 9px; color: #333; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 10px; }
+  .legend-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+  .legend-item { display: flex; align-items: center; gap: 8px; font-size: 11px; color: #555; }
+
+  .add-cat-btn { background: none; border: 1px solid var(--border); border-radius: 8px; padding: 10px 12px; color: var(--muted); font-size: 11px; cursor: pointer; white-space: nowrap; font-family: 'Lora', serif; transition: color 0.2s, border-color 0.2s; flex-shrink: 0; }
+  .add-cat-btn:hover { color: var(--gold); border-color: var(--gold); }
+  .emoji-picker { display: flex; flex-wrap: wrap; gap: 8px; background: var(--bg2); border: 1px solid var(--border); border-radius: 8px; padding: 12px; margin-bottom: 4px; }
+  .emoji-opt { font-size: 22px; cursor: pointer; padding: 4px; border-radius: 6px; transition: background 0.15s; }
+  .emoji-opt:hover, .emoji-opt.selected { background: #2a2a2a; }
+</style>
+</head>
+<body>
+
+<!-- EDIT MODAL -->
+<div class="modal-overlay" id="editModal">
+  <div class="modal">
+    <div class="modal-title">Edit Entry</div>
+    <label class="modal-label">What did you do?</label>
+    <input type="text" class="modal-input" id="modalText" placeholder="Describe the activity...">
+    <label class="modal-label">Category</label>
+    <select class="modal-select" id="modalCategory">
+      <option value="writing">✍️ Writing / Editing</option>
+      <option value="animation">🎬 Animation</option>
+      <option value="design">🎨 Design / Cover work</option>
+      <option value="coding">💻 Website / Coding</option>
+      <option value="reading">📖 Reading</option>
+      <option value="community">🤝 Community / Outreach</option>
+      <option value="instagram">📱 Instagram Post</option>
+      <option value="vibe">🎁 Vibe Gift Shop</option>
+      <option value="book_hangout">📚 Book Hangout</option>
+      <option value="epicenter">🌍 Epicenter of Life</option>
+      <option value="other">⚡ Other</option>
+    </select>
+    <div class="modal-buttons">
+      <button class="modal-cancel" onclick="closeModal()">Cancel</button>
+      <button class="modal-save" onclick="saveEdit()">Save</button>
+    </div>
+  </div>
+</div>
+
+
+<!-- ADD CATEGORY MODAL -->
+<div class="modal-overlay" id="addCatModal">
+  <div class="modal">
+    <div class="modal-title">New Category</div>
+    <label class="modal-label">Category name</label>
+    <input type="text" class="modal-input" id="newCatName" placeholder="e.g. Podcast, Prayer, Exercise..." maxlength="30">
+    <label class="modal-label">Pick an emoji icon</label>
+    <div class="emoji-picker" id="emojiPicker"></div>
+    <input type="text" class="modal-input" id="newCatIcon" placeholder="Or type any emoji..." maxlength="4" style="margin-top:10px;">
+    <div class="modal-buttons" style="margin-top:4px;">
+      <button class="modal-cancel" onclick="closeAddCatModal()">Cancel</button>
+      <button class="modal-save" onclick="saveNewCategory()">Add</button>
+    </div>
+  </div>
+</div>
+
+<div class="header">
+  <div class="header-eyebrow">Productivity Dashboard</div>
+  <div class="header-name">Michael Silas</div>
+</div>
+
+<div class="tabs">
+  <button class="tab active" onclick="switchTab('map',this)">Skills Map</button>
+  <button class="tab" onclick="switchTab('tracker',this)">Today</button>
+  <button class="tab" onclick="switchTab('history',this)">30 Days</button>
+</div>
+
+<div id="panel-map" class="panel active">
+  <div class="map-hint">Tap a skill to see how it connects</div>
+  <div class="map-wrap">
+    <svg id="skillMap" viewBox="0 0 440 440"></svg>
+  </div>
+  <div id="connectionInfo"></div>
+</div>
+
+<div id="panel-tracker" class="panel">
+  <div class="streak-display">
+    <div class="streak-number" id="streakNum">0</div>
+    <div class="streak-label">Day Streak</div>
+  </div>
+  <div class="today-date" id="todayDate"></div>
+  <div class="add-form">
+    <input type="text" class="add-input" id="activityInput" placeholder="What did you do today..." onkeydown="if(event.key==='Enter') addEntry()">
+    <button class="add-btn" onclick="addEntry()">+</button>
+  </div>
+  <div style="display:flex;gap:8px;align-items:center;margin-bottom:10px;"><select class="category-select" id="categorySelect" style="margin-bottom:0;flex:1;">
+    <option value="writing">✍️ Writing / Editing</option>
+    <option value="animation">🎬 Animation</option>
+    <option value="design">🎨 Design / Cover work</option>
+    <option value="coding">💻 Website / Coding</option>
+    <option value="reading">📖 Reading</option>
+    <option value="community">🤝 Community / Outreach</option>
+    <option value="instagram">📱 Instagram Post</option>
+    <option value="vibe">🎁 Vibe Gift Shop</option>
+    <option value="book_hangout">📚 Book Hangout</option>
+    <option value="epicenter">🌍 Epicenter of Life</option>
+    <option value="other">⚡ Other</option>
+  </select><button class="add-cat-btn" onclick="openAddCatModal()" title="Add new category">＋ Category</button></div>
+  <ul class="todo-list" id="todoList"></ul>
+  <div class="empty-state" id="emptyState">Nothing logged yet. Add your first entry above.</div>
+</div>
+
+<div id="panel-history" class="panel">
+  <div style="font-size:10px;color:#444;text-align:center;margin-bottom:18px;letter-spacing:1px;text-transform:uppercase;">Last 30 days</div>
+  <div class="days-grid" id="daysGrid"></div>
+  <div class="stats-row" id="statsRow"></div>
+  <div class="legend">
+    <div class="legend-title">What counts</div>
+    <div class="legend-grid" id="legendGrid"></div>
+  </div>
+</div>
+
+<script>
+const HABITS = {
+  writing:      { label: "Writing / Editing",   icon: "✍️" },
+  animation:    { label: "Animation",            icon: "🎬" },
+  design:       { label: "Design / Cover work",  icon: "🎨" },
+  coding:       { label: "Website / Coding",     icon: "💻" },
+  reading:      { label: "Reading",              icon: "📖" },
+  community:    { label: "Community / Outreach", icon: "🤝" },
+  instagram:    { label: "Instagram Post",       icon: "📱" },
+  vibe:         { label: "Vibe Gift Shop",       icon: "🎁" },
+  book_hangout: { label: "Book Hangout",         icon: "📚" },
+  epicenter:    { label: "Epicenter of Life",    icon: "🌍" },
+  other:        { label: "Other",                icon: "⚡" },
+};
+
+const SKILLS = [
+  { id: "writing",   label: "Writing",    sub: "Poetry & Books",   cx: 220, cy: 62  },
+  { id: "animation", label: "Animation",  sub: "Callipeg",         cx: 330, cy: 110 },
+  { id: "drawing",   label: "Drawing",    sub: "Procreate",        cx: 378, cy: 220 },
+  { id: "design",    label: "Design",     sub: "Graphic & Covers", cx: 330, cy: 330 },
+  { id: "community", label: "Community",  sub: "Book Hangout",     cx: 220, cy: 378 },
+  { id: "faith",     label: "Faith",      sub: "Biblical Study",   cx: 110, cy: 330 },
+  { id: "coding",    label: "Coding",     sub: "Web & Apps",       cx: 62,  cy: 220 },
+  { id: "reading",   label: "Reading",    sub: "Knowledge",        cx: 110, cy: 110 },
+];
+
+const CONNECTIONS = [
+  { from: "writing",   to: "animation",  label: "Animated stories with message" },
+  { from: "writing",   to: "design",     label: "Book covers & posters" },
+  { from: "writing",   to: "faith",      label: "Friend of God / Unanswered" },
+  { from: "writing",   to: "community",  label: "Books that start conversations" },
+  { from: "animation", to: "drawing",    label: "Frame by frame storytelling" },
+  { from: "drawing",   to: "design",     label: "Visual language" },
+  { from: "design",    to: "coding",     label: "Portfolio & web presence" },
+  { from: "coding",    to: "community",  label: "Platforms for people" },
+  { from: "faith",     to: "community",  label: "Epicenter of Life" },
+  { from: "reading",   to: "writing",    label: "Fuel for ideas" },
+  { from: "reading",   to: "community",  label: "Book Hangout events" },
+  { from: "faith",     to: "writing",    label: "Questions worth asking" },
+];
+
+// ── Storage ──────────────────────────────────────────
+function loadLogs() {
+  try { return JSON.parse(localStorage.getItem('msilas-logs') || '{}'); }
+  catch { return {}; }
+}
+function saveLogs(d) {
+  try { localStorage.setItem('msilas-logs', JSON.stringify(d)); } catch {}
+}
+function getTodayKey() { return new Date().toISOString().split('T')[0]; }
+function getLast30() {
+  const days = [], t = new Date();
+  for (let i = 29; i >= 0; i--) {
+    const d = new Date(t); d.setDate(t.getDate() - i);
+    days.push(d.toISOString().split('T')[0]);
+  }
+  return days;
+}
+function fmtDate(s) {
+  return new Date(s + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+}
+function fmtTime(iso) {
+  return new Date(iso).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+}
+function calcStreak(logs) {
+  let count = 0, t = new Date();
+  for (let i = 0; i < 365; i++) {
+    const d = new Date(t); d.setDate(t.getDate() - i);
+    const k = d.toISOString().split('T')[0];
+    if (logs[k] && logs[k].length > 0) count++;
+    else if (i > 0) break;
+  }
+  return count;
+}
+
+// ── Tabs ──────────────────────────────────────────────
+function switchTab(id, btn) {
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.getElementById('panel-' + id).classList.add('active');
+  btn.classList.add('active');
+  if (id === 'tracker') renderTracker();
+  if (id === 'history') renderHistory();
+}
+
+// ── Tracker ───────────────────────────────────────────
+function renderTracker() {
+  const logs = loadLogs();
+  const today = getTodayKey();
+  const entries = logs[today] || [];
+  document.getElementById('streakNum').textContent = calcStreak(logs);
+  document.getElementById('todayDate').textContent = fmtDate(today);
+  const list = document.getElementById('todoList');
+  const empty = document.getElementById('emptyState');
+  list.innerHTML = '';
+  empty.style.display = entries.length === 0 ? 'block' : 'none';
+  entries.forEach((e, i) => {
+    const habit = getAllHabits()[e.category] || HABITS.other;
+    const li = document.createElement('li');
+    li.className = 'todo-item';
+    li.innerHTML = `
+      <span class="todo-icon">${habit.icon}</span>
+      <div class="todo-content">
+        <div class="todo-category">${habit.label}</div>
+        <div class="todo-text">${e.text || '—'}</div>
+        <div class="todo-time">${fmtTime(e.timestamp)}</div>
+      </div>
+      <div class="todo-actions">
+        <button class="todo-action-btn" onclick="openEditModal(${i})" title="Edit">✎</button>
+        <button class="todo-action-btn del" onclick="deleteEntry(${i})" title="Delete">×</button>
+      </div>
+    `;
+    list.appendChild(li);
+  });
+}
+
+function addEntry() {
+  const input = document.getElementById('activityInput');
+  const cat = document.getElementById('categorySelect').value;
+  const text = input.value.trim();
+  const logs = loadLogs();
+  const today = getTodayKey();
+  if (!logs[today]) logs[today] = [];
+  logs[today].push({ text, category: cat, timestamp: new Date().toISOString() });
+  saveLogs(logs);
+  input.value = '';
+  renderTracker();
+}
+
+function deleteEntry(index) {
+  const logs = loadLogs();
+  const today = getTodayKey();
+  if (logs[today]) {
+    logs[today].splice(index, 1);
+    saveLogs(logs);
+    renderTracker();
+  }
+}
+
+// ── Edit Modal ────────────────────────────────────────
+let editingIndex = -1;
+
+function openEditModal(index) {
+  const logs = loadLogs();
+  const today = getTodayKey();
+  const entry = logs[today][index];
+  if (!entry) return;
+  editingIndex = index;
+  document.getElementById('modalText').value = entry.text || '';
+  document.getElementById('modalCategory').value = entry.category || 'other';
+  document.getElementById('editModal').classList.add('open');
+  setTimeout(() => document.getElementById('modalText').focus(), 100);
+}
+
+function closeModal() {
+  document.getElementById('editModal').classList.remove('open');
+  editingIndex = -1;
+}
+
+function saveEdit() {
+  if (editingIndex < 0) return;
+  const logs = loadLogs();
+  const today = getTodayKey();
+  if (!logs[today] || !logs[today][editingIndex]) return;
+  logs[today][editingIndex].text = document.getElementById('modalText').value.trim();
+  logs[today][editingIndex].category = document.getElementById('modalCategory').value;
+  saveLogs(logs);
+  closeModal();
+  renderTracker();
+}
+
+// Close modal on overlay click
+document.getElementById('editModal').addEventListener('click', function(e) {
+  if (e.target === this) closeModal();
+});
+
+// ── History ───────────────────────────────────────────
+function renderHistory() {
+  const logs = loadLogs();
+  const days = getLast30();
+  const today = getTodayKey();
+  const grid = document.getElementById('daysGrid');
+  grid.innerHTML = '';
+  days.forEach(day => {
+    const entries = logs[day] || [];
+    const isToday = day === today;
+    const hasEntries = entries.length > 0;
+    const cell = document.createElement('div');
+    cell.className = 'day-cell' + (hasEntries ? ' has-entries' : '') + (isToday ? ' is-today' : '');
+    const tooltip = `${fmtDate(day)}${hasEntries ? ` · ${entries.length} thing${entries.length > 1 ? 's' : ''}` : ''}`;
+    cell.innerHTML = `
+      <div class="day-tooltip">${tooltip}</div>
+      ${hasEntries ? `<span class="day-count">${entries.length}</span>` : isToday ? '<div class="today-dot"></div>' : ''}
+    `;
+    grid.appendChild(cell);
+  });
+  const activeDays = days.filter(d => logs[d] && logs[d].length > 0).length;
+  const total = days.reduce((s, d) => s + (logs[d] ? logs[d].length : 0), 0);
+  document.getElementById('statsRow').innerHTML = `
+    <div class="stat-box"><div class="stat-number">${activeDays}</div><div class="stat-label">Active Days</div></div>
+    <div class="stat-box"><div class="stat-number dim">${30 - activeDays}</div><div class="stat-label">Missed</div></div>
+    <div class="stat-box"><div class="stat-number">${total}</div><div class="stat-label">Total Things</div></div>
+  `;
+  document.getElementById('legendGrid').innerHTML = Object.entries(getAllHabits()).map(([k, v]) =>
+    `<div class="legend-item"><span>${v.icon}</span><span>${v.label}</span></div>`
+  ).join('');
+}
+
+// ── Skills Map ────────────────────────────────────────
+let activeSkill = null;
+
+function buildMap() {
+  const svg = document.getElementById('skillMap');
+  CONNECTIONS.forEach(c => {
+    const f = SKILLS.find(s => s.id === c.from);
+    const t = SKILLS.find(s => s.id === c.to);
+    const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+    line.setAttribute('x1', f.cx); line.setAttribute('y1', f.cy);
+    line.setAttribute('x2', t.cx); line.setAttribute('y2', t.cy);
+    line.setAttribute('stroke', '#1e1e1e'); line.setAttribute('stroke-width', '1');
+    line.dataset.from = c.from; line.dataset.to = c.to;
+    line.classList.add('conn-line');
+    line.style.transition = 'all 0.25s';
+    svg.appendChild(line);
+  });
+
+  // Center
+  const cg = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+  const cc = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+  cc.setAttribute('cx', 220); cc.setAttribute('cy', 220); cc.setAttribute('r', '42');
+  cc.setAttribute('fill', '#141414'); cc.setAttribute('stroke', '#E8C547'); cc.setAttribute('stroke-width', '1.5');
+  const mkT = (y, txt) => {
+    const el = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+    el.setAttribute('x', 220); el.setAttribute('y', y); el.setAttribute('text-anchor', 'middle');
+    el.setAttribute('fill', '#E8C547'); el.setAttribute('font-size', '13');
+    el.setAttribute('font-family', 'Playfair Display, serif'); el.textContent = txt;
+    return el;
+  };
+  cg.appendChild(cc);
+  cg.appendChild(mkT(214, 'BUILD'));
+  cg.appendChild(mkT(232, 'ANYWAY'));
+  svg.appendChild(cg);
+
+  SKILLS.forEach(s => {
+    const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+    g.classList.add('skill-node'); g.dataset.id = s.id; g.style.cursor = 'pointer';
+
+    const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+    circle.setAttribute('cx', s.cx); circle.setAttribute('cy', s.cy); circle.setAttribute('r', '42');
+    circle.setAttribute('fill', '#141414'); circle.setAttribute('stroke', '#2a2a2a');
+    circle.setAttribute('stroke-width', '1.5'); circle.style.transition = 'all 0.25s';
+
+    const t1 = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+    t1.setAttribute('x', s.cx); t1.setAttribute('y', s.cy - 6);
+    t1.setAttribute('text-anchor', 'middle'); t1.setAttribute('fill', '#d0cbc0');
+    t1.setAttribute('font-size', '13'); t1.setAttribute('font-family', 'Playfair Display, serif');
+    t1.setAttribute('font-weight', '700'); t1.textContent = s.label;
+
+    const t2 = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+    t2.setAttribute('x', s.cx); t2.setAttribute('y', s.cy + 12);
+    t2.setAttribute('text-anchor', 'middle'); t2.setAttribute('fill', '#555');
+    t2.setAttribute('font-size', '10'); t2.setAttribute('font-family', 'Lora, serif');
+    t2.textContent = s.sub;
+
+    g.appendChild(circle); g.appendChild(t1); g.appendChild(t2);
+    g.addEventListener('click', () => toggleSkill(s.id));
+    svg.appendChild(g);
+  });
+}
+
+function toggleSkill(id) {
+  activeSkill = activeSkill === id ? null : id;
+  updateMapState(); renderConnectionInfo();
+}
+
+function updateMapState() {
+  document.querySelectorAll('.conn-line').forEach(line => {
+    const active = activeSkill && (line.dataset.from === activeSkill || line.dataset.to === activeSkill);
+    const inactive = activeSkill && !active;
+    line.setAttribute('stroke', active ? '#E8C547' : '#1e1e1e');
+    line.setAttribute('stroke-width', active ? '2' : '0.8');
+    line.style.opacity = inactive ? '0.04' : '1';
+  });
+  document.querySelectorAll('.skill-node').forEach(g => {
+    const id = g.dataset.id;
+    const isActive = activeSkill === id;
+    const connected = activeSkill && CONNECTIONS.some(c =>
+      (c.from === activeSkill && c.to === id) || (c.to === activeSkill && c.from === id));
+    const inactive = activeSkill && !isActive && !connected;
+    const circle = g.querySelector('circle');
+    const t1 = g.querySelectorAll('text')[0];
+    circle.setAttribute('fill', isActive ? '#E8C547' : connected ? '#1e1a08' : '#141414');
+    circle.setAttribute('stroke', isActive || connected ? '#E8C547' : '#2a2a2a');
+    t1.setAttribute('fill', isActive ? '#0c0c0c' : '#d0cbc0');
+    g.style.opacity = inactive ? '0.15' : '1';
+  });
+}
+
+function renderConnectionInfo() {
+  const el = document.getElementById('connectionInfo');
+  if (!activeSkill) { el.innerHTML = '<div class="map-tagline">Every skill serves the same mission.</div>'; return; }
+  const skill = SKILLS.find(s => s.id === activeSkill);
+  const conns = CONNECTIONS.filter(c => c.from === activeSkill || c.to === activeSkill);
+  el.innerHTML = `
+    <div class="connection-info">
+      <div class="connection-title">${skill.label} connects to:</div>
+      ${conns.map(c => {
+        const otherId = c.from === activeSkill ? c.to : c.from;
+        const other = SKILLS.find(s => s.id === otherId);
+        return `<div class="connection-item"><div class="connection-dot"></div>
+          <div><span class="connection-other">${other.label}</span>
+          <span class="connection-label"> — ${c.label}</span></div></div>`;
+      }).join('')}
+      <button class="clear-btn" onclick="toggleSkill('${activeSkill}')">Clear</button>
+    </div>`;
+}
+
+
+// ── Custom Categories ─────────────────────────────────
+const EMOJI_OPTIONS = ['🎯','🔥','💡','🎙️','🙏','💪','🧘','🏃','🎵','✏️','🎤','📝','🧠','💬','🌱','⭐','🎓','🛠️','📊','💼'];
+let selectedEmoji = '⭐';
+
+function loadCustomCategories() {
+  try { return JSON.parse(localStorage.getItem('msilas-custom-cats') || '{}'); }
+  catch { return {}; }
+}
+function saveCustomCategories(d) {
+  try { localStorage.setItem('msilas-custom-cats', JSON.stringify(d)); } catch {}
+}
+function getAllHabits() {
+  const custom = loadCustomCategories();
+  return Object.assign({}, HABITS, custom);
+}
+
+function populateCategorySelects() {
+  const all = getAllHabits();
+  const selects = ['categorySelect', 'modalCategory', 'addCatModalCat'];
+  selects.forEach(id => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    const current = el.value;
+    el.innerHTML = Object.entries(all).map(([k, v]) =>
+      `<option value="${k}">${v.icon} ${v.label}</option>`
+    ).join('');
+    if (current) el.value = current;
+  });
+}
+
+function openAddCatModal() {
+  selectedEmoji = '⭐';
+  document.getElementById('newCatName').value = '';
+  document.getElementById('newCatIcon').value = '';
+  const picker = document.getElementById('emojiPicker');
+  picker.innerHTML = EMOJI_OPTIONS.map(e =>
+    `<span class="emoji-opt${e === selectedEmoji ? ' selected' : ''}" onclick="selectEmoji('${e}',this)">${e}</span>`
+  ).join('');
+  document.getElementById('addCatModal').classList.add('open');
+  setTimeout(() => document.getElementById('newCatName').focus(), 100);
+}
+
+function closeAddCatModal() {
+  document.getElementById('addCatModal').classList.remove('open');
+}
+
+function selectEmoji(emoji, el) {
+  selectedEmoji = emoji;
+  document.querySelectorAll('.emoji-opt').forEach(e => e.classList.remove('selected'));
+  el.classList.add('selected');
+  document.getElementById('newCatIcon').value = '';
+}
+
+function saveNewCategory() {
+  const name = document.getElementById('newCatName').value.trim();
+  const iconInput = document.getElementById('newCatIcon').value.trim();
+  if (!name) { document.getElementById('newCatName').focus(); return; }
+  const icon = iconInput || selectedEmoji;
+  const key = 'custom_' + name.toLowerCase().replace(/\s+/g, '_').replace(/[^a-z0-9_]/g, '') + '_' + Date.now();
+  const custom = loadCustomCategories();
+  custom[key] = { label: name, icon };
+  saveCustomCategories(custom);
+  populateCategorySelects();
+  closeAddCatModal();
+}
+
+document.getElementById('addCatModal').addEventListener('click', function(e) {
+  if (e.target === this) closeAddCatModal();
+});
+
+// Init
+buildMap();
+renderConnectionInfo();
+populateCategorySelects();
+renderTracker();
+</script>
+</body>
+</html>
