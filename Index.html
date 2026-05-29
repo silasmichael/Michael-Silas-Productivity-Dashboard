@@ -6,128 +6,127 @@
 <title>Michael's Productivity Dashboard</title>
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&family=Lora:ital,wght@0,400;0,500;1,400&display=swap" rel="stylesheet">
 <style>
-  :root {
-    --gold: #E8C547;
-    --bg: #0c0c0c;
-    --bg2: #131313;
-    --border: #222;
-    --text: #e8e0d0;
-    --muted: #666;
-    --green: #4a9a4a;
-  }
-  * { margin: 0; padding: 0; box-sizing: border-box; }
-  body { background: var(--bg); color: var(--text); font-family: 'Lora', serif; min-height: 100vh; padding-bottom: 60px; }
-  .page-wrap { max-width: 1200px; margin: 0 auto; padding: 0 20px; }
-  .desktop-grid { display: grid; grid-template-columns: 1fr; gap: 0; }
-  @media (min-width: 768px) {
-    .desktop-grid { grid-template-columns: 1fr 1fr; gap: 32px; align-items: start; }
-    .desktop-left { position: sticky; top: 20px; }
-    .header { padding: 32px 0 20px; border-bottom: 1px solid var(--border); }
-    .top-stats { padding: 20px 0; }
-    .add-section { padding: 0; }
-    .todo-list { padding: 0; }
-    .empty-state { padding: 20px 0; }
-    .days-section { padding: 0; }
-    .map-section { padding: 0; }
-    .section { padding: 20px 0 0; }
-  }
+  :root { --gold:#E8C547; --bg:#0c0c0c; --bg2:#131313; --border:#222; --text:#e8e0d0; --muted:#666; --green:#4a9a4a; }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { background:var(--bg); color:var(--text); font-family:'Lora',serif; min-height:100vh; padding-bottom:60px; }
+
+  .page-wrap { max-width:1200px; margin:0 auto; padding:0 20px; }
 
   /* HEADER */
-  .header { padding: 24px 20px 16px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; }
-  .header-title { font-family: 'Playfair Display', serif; font-size: 18px; color: var(--gold); font-weight: 700; }
-  .header-date { font-size: 10px; color: #444; letter-spacing: 1px; text-transform: uppercase; }
+  .header { padding:24px 0 16px; border-bottom:1px solid var(--border); display:flex; align-items:center; justify-content:space-between; margin-bottom:4px; }
+  .header-title { font-family:'Playfair Display',serif; font-size:20px; color:var(--gold); font-weight:700; }
+  .header-date { font-size:10px; color:#444; letter-spacing:1px; text-transform:uppercase; }
 
-  /* SECTION LABELS */
-  .section { padding: 20px 16px 0; }
-  .section-label { font-size: 10px; color: #444; letter-spacing: 2px; text-transform: uppercase; margin-bottom: 14px; display: flex; align-items: center; gap: 10px; }
-  .section-label::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+  /* DESKTOP GRID */
+  .desktop-grid { display:grid; grid-template-columns:1fr; gap:0; }
+  @media(min-width:768px) {
+    .desktop-grid { grid-template-columns:1fr 1fr; gap:40px; align-items:start; padding-top:8px; }
+    .desktop-left { position:sticky; top:20px; max-height:calc(100vh - 40px); overflow-y:auto; scrollbar-width:none; }
+    .desktop-left::-webkit-scrollbar { display:none; }
+  }
 
-  /* STREAK + STATS ROW */
-  .top-stats { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; padding: 16px; }
-  .stat-box { background: var(--bg2); border-radius: 10px; padding: 14px; text-align: center; border: 1px solid var(--border); }
-  .stat-number { font-family: 'Playfair Display', serif; font-size: 28px; color: var(--gold); font-weight: 700; line-height: 1; }
-  .stat-number.dim { color: #333; }
-  .stat-label { font-size: 9px; color: #444; margin-top: 4px; text-transform: uppercase; letter-spacing: 1px; }
+  /* SECTION LABEL */
+  .section { padding:20px 0 0; }
+  .section-label { font-size:10px; color:#444; letter-spacing:2px; text-transform:uppercase; margin-bottom:14px; display:flex; align-items:center; gap:10px; }
+  .section-label::after { content:''; flex:1; height:1px; background:var(--border); }
+
+  /* STATS */
+  .top-stats { display:grid; grid-template-columns:1fr 1fr 1fr; gap:10px; padding:16px 0; }
+  .stat-box { background:var(--bg2); border-radius:10px; padding:14px; text-align:center; border:1px solid var(--border); }
+  .stat-number { font-family:'Playfair Display',serif; font-size:28px; color:var(--gold); font-weight:700; line-height:1; }
+  .stat-number.dim { color:#333; }
+  .stat-label { font-size:9px; color:#444; margin-top:4px; text-transform:uppercase; letter-spacing:1px; }
 
   /* ADD ENTRY */
-  .add-section { padding: 0 16px; }
-  .add-form { display: flex; gap: 8px; margin-bottom: 10px; }
-  .add-input { flex: 1; background: var(--bg2); border: 1px solid var(--border); border-radius: 8px; padding: 11px 14px; color: var(--text); font-size: 13px; font-family: 'Lora', serif; outline: none; transition: border-color 0.2s; }
-  .add-input:focus { border-color: var(--gold); }
-  .add-input::placeholder { color: #333; }
-  .add-btn { background: var(--gold); border: none; border-radius: 8px; padding: 11px 18px; color: #0c0c0c; font-size: 20px; cursor: pointer; font-weight: bold; flex-shrink: 0; line-height: 1; }
-  .add-btn:hover { background: #f0d060; }
-  .cat-row { display: flex; gap: 8px; margin-bottom: 14px; }
-  .category-select { flex: 1; background: var(--bg2); border: 1px solid var(--border); border-radius: 8px; padding: 10px 14px; color: var(--text); font-size: 13px; font-family: 'Lora', serif; outline: none; cursor: pointer; appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%23666' stroke-width='1.5' fill='none'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 12px center; }
-  .category-select:focus { border-color: var(--gold); }
-  .category-select option { background: #1a1a1a; }
-  .add-cat-btn { background: none; border: 1px solid var(--border); border-radius: 8px; padding: 10px 12px; color: var(--muted); font-size: 11px; cursor: pointer; white-space: nowrap; font-family: 'Lora', serif; flex-shrink: 0; }
-  .add-cat-btn:hover { color: var(--gold); border-color: var(--gold); }
+  .add-form { display:flex; gap:8px; margin-bottom:10px; }
+  .add-input { flex:1; background:var(--bg2); border:1px solid var(--border); border-radius:8px; padding:11px 14px; color:var(--text); font-size:13px; font-family:'Lora',serif; outline:none; transition:border-color 0.2s; }
+  .add-input:focus { border-color:var(--gold); }
+  .add-input::placeholder { color:#333; }
+  .add-btn { background:var(--gold); border:none; border-radius:8px; padding:11px 18px; color:#0c0c0c; font-size:20px; cursor:pointer; font-weight:bold; flex-shrink:0; line-height:1; }
+  .add-btn:hover { background:#f0d060; }
+  .cat-row { display:flex; gap:8px; margin-bottom:14px; }
+  .cat-select { flex:1; background:var(--bg2); border:1px solid var(--border); border-radius:8px; padding:10px 14px; color:var(--text); font-size:13px; font-family:'Lora',serif; outline:none; cursor:pointer; appearance:none; background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%23666' stroke-width='1.5' fill='none'/%3E%3C/svg%3E"); background-repeat:no-repeat; background-position:right 12px center; }
+  .cat-select:focus { border-color:var(--gold); }
+  .cat-select option { background:#1a1a1a; }
+  .add-cat-btn { background:none; border:1px solid var(--border); border-radius:8px; padding:10px 12px; color:var(--muted); font-size:11px; cursor:pointer; white-space:nowrap; font-family:'Lora',serif; flex-shrink:0; transition:color 0.2s,border-color 0.2s; }
+  .add-cat-btn:hover { color:var(--gold); border-color:var(--gold); }
 
-  /* TODAY LIST */
-  .todo-list { list-style: none; padding: 0 16px; }
-  .todo-item { display: flex; align-items: flex-start; gap: 10px; padding: 13px 14px; background: var(--bg2); border: 1px solid var(--border); border-radius: 8px; margin-bottom: 8px; animation: slideIn 0.2s ease; }
-  @keyframes slideIn { from { opacity: 0; transform: translateY(-5px); } to { opacity: 1; transform: translateY(0); } }
-  .todo-icon { font-size: 17px; flex-shrink: 0; margin-top: 1px; }
-  .todo-content { flex: 1; min-width: 0; }
-  .todo-category { font-size: 10px; color: var(--gold); letter-spacing: 1px; text-transform: uppercase; margin-bottom: 2px; }
-  .todo-text { font-size: 13px; color: var(--text); line-height: 1.4; word-break: break-word; }
-  .todo-time { font-size: 10px; color: #333; margin-top: 3px; }
-  .todo-actions { display: flex; flex-direction: column; gap: 6px; flex-shrink: 0; }
-  .todo-action-btn { background: none; border: none; color: #333; font-size: 14px; cursor: pointer; padding: 2px 4px; line-height: 1; transition: color 0.2s; }
-  .todo-action-btn:hover { color: var(--gold); }
-  .todo-action-btn.del:hover { color: #a04040; }
-  .empty-state { text-align: center; color: #2a2a2a; font-size: 13px; font-style: italic; padding: 20px 16px; }
+  /* TODO LIST */
+  .todo-list { list-style:none; }
+  .todo-item { display:flex; align-items:flex-start; gap:10px; padding:13px 14px; background:var(--bg2); border:1px solid var(--border); border-radius:8px; margin-bottom:8px; animation:slideIn 0.2s ease; }
+  @keyframes slideIn { from{opacity:0;transform:translateY(-5px)} to{opacity:1;transform:translateY(0)} }
+  .todo-icon { font-size:17px; flex-shrink:0; margin-top:1px; }
+  .todo-content { flex:1; min-width:0; }
+  .todo-cat { font-size:10px; color:var(--gold); letter-spacing:1px; text-transform:uppercase; margin-bottom:2px; }
+  .todo-text { font-size:13px; color:var(--text); line-height:1.4; word-break:break-word; }
+  .todo-time { font-size:10px; color:#333; margin-top:3px; }
+  .todo-btns { display:flex; flex-direction:column; gap:6px; flex-shrink:0; }
+  .icon-btn { background:none; border:none; color:#333; font-size:14px; cursor:pointer; padding:2px 4px; line-height:1; transition:color 0.2s; }
+  .icon-btn:hover { color:var(--gold); }
+  .icon-btn.del:hover { color:#a04040; }
+  .empty-state { text-align:center; color:#2a2a2a; font-size:13px; font-style:italic; padding:20px 0; }
 
-  /* 30 DAYS GRID */
-  .days-section { padding: 0 16px; }
-  .days-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 5px; margin-bottom: 8px; }
-  .day-cell { aspect-ratio: 1; border-radius: 4px; background: var(--bg2); border: 1px solid var(--border); display: flex; align-items: center; justify-content: center; position: relative; }
-  .day-cell.has-entries { background: var(--gold); border-color: var(--gold); }
-  .day-cell.is-today:not(.has-entries) { border-color: var(--gold); }
-  .today-dot { width: 4px; height: 4px; border-radius: 50%; background: var(--gold); }
-  .day-count { font-size: 9px; color: #0c0c0c; font-weight: bold; font-family: 'Playfair Display', serif; }
-  .day-tooltip { display: none; position: absolute; bottom: calc(100% + 5px); left: 50%; transform: translateX(-50%); background: #1a1a1a; border: 1px solid var(--border); border-radius: 4px; padding: 4px 7px; font-size: 10px; color: var(--text); white-space: nowrap; z-index: 20; pointer-events: none; }
-  .day-cell:hover .day-tooltip { display: block; }
+  /* 30 DAYS */
+  .days-grid { display:grid; grid-template-columns:repeat(7,1fr); gap:5px; margin-bottom:8px; }
+  .day-cell { aspect-ratio:1; border-radius:4px; background:var(--bg2); border:1px solid var(--border); display:flex; align-items:center; justify-content:center; position:relative; }
+  .day-cell.has-entries { background:var(--gold); border-color:var(--gold); }
+  .day-cell.is-today:not(.has-entries) { border-color:var(--gold); }
+  .today-dot { width:4px; height:4px; border-radius:50%; background:var(--gold); }
+  .day-count { font-size:9px; color:#0c0c0c; font-weight:bold; font-family:'Playfair Display',serif; }
+  .day-tip { display:none; position:absolute; bottom:calc(100% + 5px); left:50%; transform:translateX(-50%); background:#1a1a1a; border:1px solid var(--border); border-radius:4px; padding:4px 7px; font-size:10px; color:var(--text); white-space:nowrap; z-index:20; pointer-events:none; }
+  .day-cell:hover .day-tip { display:block; }
+
+  /* PROJECTS */
+  .projects-list { list-style:none; }
+  .project-item { display:flex; align-items:flex-start; gap:10px; padding:13px 14px; background:var(--bg2); border:1px solid var(--border); border-radius:8px; margin-bottom:8px; }
+  .proj-dot { width:8px; height:8px; border-radius:50%; flex-shrink:0; margin-top:5px; }
+  .proj-content { flex:1; min-width:0; }
+  .proj-name { font-size:14px; color:var(--text); font-family:'Playfair Display',serif; }
+  .proj-desc { font-size:11px; color:var(--muted); margin-top:3px; line-height:1.4; }
+  .proj-status { font-size:10px; letter-spacing:1px; text-transform:uppercase; margin-top:5px; }
+  .status-active { color:var(--green); }
+  .status-paused { color:#886633; }
+  .proj-btns { display:flex; flex-direction:column; gap:4px; flex-shrink:0; }
+  .add-proj-btn { width:100%; background:none; border:1px dashed #2a2a2a; border-radius:8px; padding:12px; color:#444; font-size:12px; cursor:pointer; font-family:'Lora',serif; letter-spacing:0.5px; transition:color 0.2s,border-color 0.2s; margin-top:4px; }
+  .add-proj-btn:hover { color:var(--gold); border-color:var(--gold); }
 
   /* SKILLS MAP */
-  .map-section { padding: 0 16px; }
-  .map-hint { font-size: 11px; color: #444; text-align: center; margin-bottom: 10px; font-style: italic; }
-  #skillMap { width: 100%; height: auto; display: block; }
-  .connection-info { margin-top: 12px; background: var(--bg2); border: 1px solid var(--border); border-left: 3px solid var(--gold); border-radius: 8px; padding: 14px; }
-  .connection-title { font-family: 'Playfair Display', serif; font-size: 14px; color: var(--gold); margin-bottom: 10px; }
-  .connection-item { display: flex; gap: 10px; margin-bottom: 8px; align-items: flex-start; }
-  .connection-dot { width: 5px; height: 5px; border-radius: 50%; background: var(--gold); margin-top: 6px; flex-shrink: 0; }
-  .conn-other { color: var(--text); font-size: 12px; }
-  .conn-label { color: #444; font-size: 11px; }
-  .clear-btn { margin-top: 10px; background: none; border: 1px solid var(--border); border-radius: 4px; color: var(--muted); font-size: 11px; padding: 5px 12px; cursor: pointer; font-family: 'Lora', serif; }
-  .clear-btn:hover { color: var(--gold); border-color: var(--gold); }
-  .map-tagline { text-align: center; color: #222; font-size: 11px; font-style: italic; margin-top: 8px; }
+  #skillMap { width:100%; height:auto; display:block; }
+  .map-hint { font-size:11px; color:#444; text-align:center; margin-bottom:10px; font-style:italic; }
+  .conn-info { margin-top:12px; background:var(--bg2); border:1px solid var(--border); border-left:3px solid var(--gold); border-radius:8px; padding:14px; }
+  .conn-title { font-family:'Playfair Display',serif; font-size:14px; color:var(--gold); margin-bottom:10px; }
+  .conn-item { display:flex; gap:10px; margin-bottom:8px; align-items:flex-start; }
+  .conn-dot { width:5px; height:5px; border-radius:50%; background:var(--gold); margin-top:6px; flex-shrink:0; }
+  .conn-other { color:var(--text); font-size:12px; }
+  .conn-lbl { color:#444; font-size:11px; }
+  .clear-btn { margin-top:10px; background:none; border:1px solid var(--border); border-radius:4px; color:var(--muted); font-size:11px; padding:5px 12px; cursor:pointer; font-family:'Lora',serif; transition:color 0.2s,border-color 0.2s; }
+  .clear-btn:hover { color:var(--gold); border-color:var(--gold); }
+  .map-tagline { text-align:center; color:#222; font-size:11px; font-style:italic; margin-top:8px; }
 
   /* MODALS */
-  .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.88); z-index: 100; align-items: center; justify-content: center; padding: 20px; }
-  .modal-overlay.open { display: flex; }
-  .modal { background: #161616; border: 1px solid #2a2a2a; border-top: 3px solid var(--gold); border-radius: 12px; padding: 22px; width: 100%; max-width: 400px; animation: modalIn 0.2s ease; }
-  @keyframes modalIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
-  .modal-title { font-family: 'Playfair Display', serif; font-size: 17px; color: var(--gold); margin-bottom: 18px; }
-  .modal-label { font-size: 11px; color: #555; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 6px; display: block; }
-  .modal-input { width: 100%; background: var(--bg2); border: 1px solid var(--border); border-radius: 8px; padding: 11px 14px; color: var(--text); font-size: 14px; font-family: 'Lora', serif; outline: none; margin-bottom: 14px; transition: border-color 0.2s; }
-  .modal-input:focus { border-color: var(--gold); }
-  .modal-select { width: 100%; background: var(--bg2); border: 1px solid var(--border); border-radius: 8px; padding: 11px 14px; color: var(--text); font-size: 14px; font-family: 'Lora', serif; outline: none; margin-bottom: 18px; cursor: pointer; appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%23666' stroke-width='1.5' fill='none'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 14px center; }
-  .modal-select option { background: #1a1a1a; }
-  .modal-buttons { display: flex; gap: 10px; }
-  .modal-save { flex: 1; background: var(--gold); border: none; border-radius: 8px; padding: 12px; color: #0c0c0c; font-size: 14px; font-family: 'Playfair Display', serif; font-weight: 700; cursor: pointer; }
-  .modal-save:hover { background: #f0d060; }
-  .modal-cancel { flex: 1; background: none; border: 1px solid var(--border); border-radius: 8px; padding: 12px; color: #555; font-size: 14px; font-family: 'Lora', serif; cursor: pointer; }
-  .modal-cancel:hover { color: var(--text); border-color: #555; }
-  .emoji-picker { display: flex; flex-wrap: wrap; gap: 7px; background: var(--bg2); border: 1px solid var(--border); border-radius: 8px; padding: 10px; margin-bottom: 4px; }
-  .emoji-opt { font-size: 20px; cursor: pointer; padding: 4px; border-radius: 6px; transition: background 0.15s; }
-  .emoji-opt:hover, .emoji-opt.selected { background: #2a2a2a; }
+  .modal-overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.88); z-index:100; align-items:center; justify-content:center; padding:20px; }
+  .modal-overlay.open { display:flex; }
+  .modal { background:#161616; border:1px solid #2a2a2a; border-top:3px solid var(--gold); border-radius:12px; padding:22px; width:100%; max-width:400px; animation:modalIn 0.2s ease; }
+  @keyframes modalIn { from{opacity:0;transform:translateY(10px)} to{opacity:1;transform:translateY(0)} }
+  .modal-title { font-family:'Playfair Display',serif; font-size:17px; color:var(--gold); margin-bottom:18px; }
+  .modal-label { font-size:11px; color:#555; text-transform:uppercase; letter-spacing:1px; margin-bottom:6px; display:block; }
+  .modal-input { width:100%; background:var(--bg2); border:1px solid var(--border); border-radius:8px; padding:11px 14px; color:var(--text); font-size:14px; font-family:'Lora',serif; outline:none; margin-bottom:14px; transition:border-color 0.2s; }
+  .modal-input:focus { border-color:var(--gold); }
+  .modal-select { width:100%; background:var(--bg2); border:1px solid var(--border); border-radius:8px; padding:11px 14px; color:var(--text); font-size:14px; font-family:'Lora',serif; outline:none; margin-bottom:18px; cursor:pointer; appearance:none; background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%23666' stroke-width='1.5' fill='none'/%3E%3C/svg%3E"); background-repeat:no-repeat; background-position:right 14px center; }
+  .modal-select option { background:#1a1a1a; }
+  .modal-btns { display:flex; gap:10px; }
+  .modal-save { flex:1; background:var(--gold); border:none; border-radius:8px; padding:12px; color:#0c0c0c; font-size:14px; font-family:'Playfair Display',serif; font-weight:700; cursor:pointer; }
+  .modal-save:hover { background:#f0d060; }
+  .modal-cancel { flex:1; background:none; border:1px solid var(--border); border-radius:8px; padding:12px; color:#555; font-size:14px; font-family:'Lora',serif; cursor:pointer; transition:color 0.2s,border-color 0.2s; }
+  .modal-cancel:hover { color:var(--text); border-color:#555; }
+  .emoji-picker { display:flex; flex-wrap:wrap; gap:7px; background:var(--bg2); border:1px solid var(--border); border-radius:8px; padding:10px; margin-bottom:4px; }
+  .emoji-opt { font-size:20px; cursor:pointer; padding:4px; border-radius:6px; transition:background 0.15s; }
+  .emoji-opt:hover,.emoji-opt.selected { background:#2a2a2a; }
 </style>
 </head>
 <body>
 
-<!-- EDIT MODAL -->
+<!-- EDIT ENTRY MODAL -->
 <div class="modal-overlay" id="editModal">
   <div class="modal">
     <div class="modal-title">Edit Entry</div>
@@ -135,7 +134,7 @@
     <input type="text" class="modal-input" id="modalText" placeholder="Describe the activity...">
     <label class="modal-label">Category</label>
     <select class="modal-select" id="modalCategory"></select>
-    <div class="modal-buttons">
+    <div class="modal-btns">
       <button class="modal-cancel" onclick="closeModal('editModal')">Cancel</button>
       <button class="modal-save" onclick="saveEdit()">Save</button>
     </div>
@@ -151,144 +150,170 @@
     <label class="modal-label">Pick an icon</label>
     <div class="emoji-picker" id="emojiPicker"></div>
     <input type="text" class="modal-input" id="newCatIcon" placeholder="Or type any emoji..." maxlength="4" style="margin-top:8px;">
-    <div class="modal-buttons" style="margin-top:4px;">
+    <div class="modal-btns" style="margin-top:4px;">
       <button class="modal-cancel" onclick="closeModal('addCatModal')">Cancel</button>
       <button class="modal-save" onclick="saveNewCategory()">Add</button>
     </div>
   </div>
 </div>
 
-<!-- HEADER -->
+<!-- PROJECT MODAL -->
+<div class="modal-overlay" id="projectModal">
+  <div class="modal">
+    <div class="modal-title" id="projModalTitle">New Project</div>
+    <label class="modal-label">Project name</label>
+    <input type="text" class="modal-input" id="projName" placeholder="e.g. Babel Animation, Unanswered Book...">
+    <label class="modal-label">Short description (optional)</label>
+    <input type="text" class="modal-input" id="projDesc" placeholder="What is this about?">
+    <label class="modal-label">Status</label>
+    <select class="modal-select" id="projStatus">
+      <option value="active">Active</option>
+      <option value="paused">Paused</option>
+    </select>
+    <div class="modal-btns">
+      <button class="modal-cancel" onclick="closeModal('projectModal')">Cancel</button>
+      <button class="modal-save" onclick="saveProject()">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- PAGE -->
 <div class="page-wrap">
-<div class="desktop-grid">
-<div class="desktop-left">
-<div class="header">
-  <div class="header-title">Michael's Productivity Dashboard</div>
-  <div class="header-date" id="headerDate"></div>
-</div>
-
-<!-- STATS ROW -->
-<div class="top-stats">
-  <div class="stat-box"><div class="stat-number" id="streakNum">0</div><div class="stat-label">Streak</div></div>
-  <div class="stat-box"><div class="stat-number" id="activeDaysNum">0</div><div class="stat-label">Active Days</div></div>
-  <div class="stat-box"><div class="stat-number" id="totalThingsNum">0</div><div class="stat-label">Total Things</div></div>
-</div>
-
-<!-- TODAY -->
-<div class="section">
-  <div class="section-label">Today</div>
-</div>
-<div class="add-section">
-  <div class="add-form">
-    <input type="text" class="add-input" id="activityInput" placeholder="What did you do today..." onkeydown="if(event.key==='Enter') addEntry()">
-    <button class="add-btn" onclick="addEntry()">+</button>
+  <div class="header">
+    <div class="header-title">Michael's Productivity Dashboard</div>
+    <div class="header-date" id="headerDate"></div>
   </div>
-  <div class="cat-row">
-    <select class="category-select" id="categorySelect"></select>
-    <button class="add-cat-btn" onclick="openAddCatModal()">＋ Category</button>
+
+  <div class="top-stats">
+    <div class="stat-box"><div class="stat-number" id="streakNum">0</div><div class="stat-label">Streak</div></div>
+    <div class="stat-box"><div class="stat-number" id="activeDaysNum">0</div><div class="stat-label">Active Days</div></div>
+    <div class="stat-box"><div class="stat-number" id="totalThingsNum">0</div><div class="stat-label">Total Things</div></div>
+  </div>
+
+  <div class="desktop-grid">
+
+    <!-- LEFT: Skills Map + Today -->
+    <div class="desktop-left">
+
+      <div class="section">
+        <div class="section-label">Skills Map</div>
+      </div>
+      <div class="map-hint">Tap a skill to see how it connects</div>
+      <svg id="skillMap" viewBox="0 0 440 440"></svg>
+      <div id="connectionInfo"></div>
+
+      <div class="section">
+        <div class="section-label">Today</div>
+      </div>
+      <div class="add-form">
+        <input type="text" class="add-input" id="activityInput" placeholder="What did you do today..." onkeydown="if(event.key==='Enter') addEntry()">
+        <button class="add-btn" onclick="addEntry()">+</button>
+      </div>
+      <div class="cat-row">
+        <select class="cat-select" id="categorySelect"></select>
+        <button class="add-cat-btn" onclick="openAddCatModal()">+ Category</button>
+      </div>
+      <ul class="todo-list" id="todoList"></ul>
+      <div class="empty-state" id="emptyState">Nothing logged yet. Add your first entry above.</div>
+
+    </div>
+
+    <!-- RIGHT: 30 Days + Projects -->
+    <div class="desktop-right">
+
+      <div class="section">
+        <div class="section-label">Last 30 Days</div>
+      </div>
+      <div class="days-grid" id="daysGrid"></div>
+
+      <div class="section" style="margin-top:16px;">
+        <div class="section-label">Current Projects</div>
+      </div>
+      <ul class="projects-list" id="projectsList"></ul>
+      <button class="add-proj-btn" onclick="openProjectModal(-1)">+ Add Project</button>
+
+    </div>
+
   </div>
 </div>
-<ul class="todo-list" id="todoList"></ul>
-<div class="empty-state" id="emptyState">Nothing logged yet. Add your first entry above.</div>
 
-</div><!-- end desktop-left -->
-<div class="desktop-right">
-<!-- 30 DAYS -->
-<div class="section" style="margin-top:8px;">
-  <div class="section-label">Last 30 Days</div>
-</div>
-<div class="days-section">
-  <div class="days-grid" id="daysGrid"></div>
-</div>
-
-<!-- SKILLS MAP -->
-<div class="section" style="margin-top:8px;">
-  <div class="section-label">Skills Map</div>
-</div>
-<div class="map-section">
-  <div class="map-hint">Tap a skill to see how it connects</div>
-  <svg id="skillMap" viewBox="0 0 440 440"></svg>
-  <div id="connectionInfo"></div>
-</div>
-
-</div><!-- end desktop-right -->
-</div><!-- end desktop-grid -->
-</div><!-- end page-wrap -->
 <script>
 const HABITS_DEFAULT = {
-  writing:      { label: "Writing / Editing",   icon: "✍️" },
-  animation:    { label: "Animation",            icon: "🎬" },
-  design:       { label: "Design / Cover work",  icon: "🎨" },
-  coding:       { label: "Website / Coding",     icon: "💻" },
-  reading:      { label: "Reading",              icon: "📖" },
-  community:    { label: "Community / Outreach", icon: "🤝" },
-  instagram:    { label: "Instagram Post",       icon: "📱" },
-  vibe:         { label: "Vibe Gift Shop",       icon: "🎁" },
-  book_hangout: { label: "Book Hangout",         icon: "📚" },
-  epicenter:    { label: "Epicenter of Life",    icon: "🌍" },
-  other:        { label: "Other",                icon: "⚡" },
+  writing:      { label:"Writing / Editing",   icon:"✍️" },
+  animation:    { label:"Animation",            icon:"🎬" },
+  design:       { label:"Design / Cover work",  icon:"🎨" },
+  coding:       { label:"Website / Coding",     icon:"💻" },
+  reading:      { label:"Reading",              icon:"📖" },
+  community:    { label:"Community / Outreach", icon:"🤝" },
+  instagram:    { label:"Instagram Post",       icon:"📱" },
+  vibe:         { label:"Vibe Gift Shop",       icon:"🎁" },
+  book_hangout: { label:"Book Hangout",         icon:"📚" },
+  epicenter:    { label:"Epicenter of Life",    icon:"🌍" },
+  other:        { label:"Other",                icon:"⚡" },
 };
 
 const SKILLS = [
-  { id: "writing",   label: "Writing",    sub: "Poetry & Books",   cx: 220, cy: 62  },
-  { id: "animation", label: "Animation",  sub: "Callipeg",         cx: 330, cy: 110 },
-  { id: "drawing",   label: "Drawing",    sub: "Procreate",        cx: 378, cy: 220 },
-  { id: "design",    label: "Design",     sub: "Graphic & Covers", cx: 330, cy: 330 },
-  { id: "community", label: "Community",  sub: "Book Hangout",     cx: 220, cy: 378 },
-  { id: "faith",     label: "Faith",      sub: "Biblical Study",   cx: 110, cy: 330 },
-  { id: "coding",    label: "Coding",     sub: "Web & Apps",       cx: 62,  cy: 220 },
-  { id: "reading",   label: "Reading",    sub: "Knowledge",        cx: 110, cy: 110 },
+  { id:"writing",   label:"Writing",    sub:"Poetry & Books",   cx:220, cy:62  },
+  { id:"animation", label:"Animation",  sub:"Callipeg",         cx:330, cy:110 },
+  { id:"drawing",   label:"Drawing",    sub:"Procreate",        cx:378, cy:220 },
+  { id:"design",    label:"Design",     sub:"Graphic & Covers", cx:330, cy:330 },
+  { id:"community", label:"Community",  sub:"Book Hangout",     cx:220, cy:378 },
+  { id:"faith",     label:"Faith",      sub:"Biblical Study",   cx:110, cy:330 },
+  { id:"coding",    label:"Coding",     sub:"Web & Apps",       cx:62,  cy:220 },
+  { id:"reading",   label:"Reading",    sub:"Knowledge",        cx:110, cy:110 },
 ];
 
 const CONNECTIONS = [
-  { from: "writing",   to: "animation",  label: "Animated stories with message" },
-  { from: "writing",   to: "design",     label: "Book covers & posters" },
-  { from: "writing",   to: "faith",      label: "Friend of God / Unanswered" },
-  { from: "writing",   to: "community",  label: "Books that start conversations" },
-  { from: "animation", to: "drawing",    label: "Frame by frame storytelling" },
-  { from: "drawing",   to: "design",     label: "Visual language" },
-  { from: "design",    to: "coding",     label: "Portfolio & web presence" },
-  { from: "coding",    to: "community",  label: "Platforms for people" },
-  { from: "faith",     to: "community",  label: "Epicenter of Life" },
-  { from: "reading",   to: "writing",    label: "Fuel for ideas" },
-  { from: "reading",   to: "community",  label: "Book Hangout events" },
-  { from: "faith",     to: "writing",    label: "Questions worth asking" },
+  { from:"writing",   to:"animation",  label:"Animated stories with message" },
+  { from:"writing",   to:"design",     label:"Book covers & posters" },
+  { from:"writing",   to:"faith",      label:"Friend of God / Unanswered" },
+  { from:"writing",   to:"community",  label:"Books that start conversations" },
+  { from:"animation", to:"drawing",    label:"Frame by frame storytelling" },
+  { from:"drawing",   to:"design",     label:"Visual language" },
+  { from:"design",    to:"coding",     label:"Portfolio & web presence" },
+  { from:"coding",    to:"community",  label:"Platforms for people" },
+  { from:"faith",     to:"community",  label:"Epicenter of Life" },
+  { from:"reading",   to:"writing",    label:"Fuel for ideas" },
+  { from:"reading",   to:"community",  label:"Book Hangout events" },
+  { from:"faith",     to:"writing",    label:"Questions worth asking" },
 ];
 
 const EMOJI_OPTIONS = ['🎯','🔥','💡','🎙️','🙏','💪','🧘','🏃','🎵','✏️','🎤','📝','🧠','💬','🌱','⭐','🎓','🛠️','📊','💼'];
 let selectedEmoji = '⭐';
-let editingIndex = -1;
+let editingEntryIndex = -1;
+let editingProjectIndex = -1;
 let activeSkill = null;
 
-// ── Storage ───────────────────────────────────
-function loadLogs() { try { return JSON.parse(localStorage.getItem('msilas-logs') || '{}'); } catch { return {}; } }
-function saveLogs(d) { try { localStorage.setItem('msilas-logs', JSON.stringify(d)); } catch {} }
-function loadCustomCats() { try { return JSON.parse(localStorage.getItem('msilas-custom-cats') || '{}'); } catch { return {}; } }
-function saveCustomCats(d) { try { localStorage.setItem('msilas-custom-cats', JSON.stringify(d)); } catch {} }
-function getAllHabits() { return Object.assign({}, HABITS_DEFAULT, loadCustomCats()); }
-function getTodayKey() { return new Date().toISOString().split('T')[0]; }
-function getLast30() {
+// Storage
+function loadLogs()    { try { return JSON.parse(localStorage.getItem('msilas-logs') || '{}'); } catch { return {}; } }
+function saveLogs(d)   { try { localStorage.setItem('msilas-logs', JSON.stringify(d)); } catch {} }
+function loadCats()    { try { return JSON.parse(localStorage.getItem('msilas-cats') || '{}'); } catch { return {}; } }
+function saveCats(d)   { try { localStorage.setItem('msilas-cats', JSON.stringify(d)); } catch {} }
+function loadProjs()   { try { return JSON.parse(localStorage.getItem('msilas-projs') || '[]'); } catch { return []; } }
+function saveProjs(d)  { try { localStorage.setItem('msilas-projs', JSON.stringify(d)); } catch {} }
+function allHabits()   { return Object.assign({}, HABITS_DEFAULT, loadCats()); }
+function todayKey()    { return new Date().toISOString().split('T')[0]; }
+function last30() {
   const days = [], t = new Date();
   for (let i = 29; i >= 0; i--) { const d = new Date(t); d.setDate(t.getDate() - i); days.push(d.toISOString().split('T')[0]); }
   return days;
 }
-function fmtDate(s) { return new Date(s + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' }); }
-function fmtTime(iso) { return new Date(iso).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }); }
+function fmtDate(s) { return new Date(s + 'T00:00:00').toLocaleDateString('en-US', { month:'short', day:'numeric' }); }
+function fmtTime(s) { return new Date(s).toLocaleTimeString('en-US', { hour:'numeric', minute:'2-digit' }); }
 function calcStreak(logs) {
-  let count = 0, t = new Date();
+  let n = 0, t = new Date();
   for (let i = 0; i < 365; i++) {
     const d = new Date(t); d.setDate(t.getDate() - i);
     const k = d.toISOString().split('T')[0];
-    if (logs[k] && logs[k].length > 0) count++;
+    if (logs[k] && logs[k].length > 0) n++;
     else if (i > 0) break;
   }
-  return count;
+  return n;
 }
 
-// ── Populate selects ──────────────────────────
+// Populate selects
 function populateSelects() {
-  const all = getAllHabits();
-  const opts = Object.entries(all).map(([k,v]) => `<option value="${k}">${v.icon} ${v.label}</option>`).join('');
+  const opts = Object.entries(allHabits()).map(([k,v]) => `<option value="${k}">${v.icon} ${v.label}</option>`).join('');
   ['categorySelect','modalCategory'].forEach(id => {
     const el = document.getElementById(id);
     if (!el) return;
@@ -298,17 +323,14 @@ function populateSelects() {
   });
 }
 
-// ── Render all ────────────────────────────────
+// Render stats + today + 30 days
 function renderAll() {
   const logs = loadLogs();
-  const today = getTodayKey();
+  const today = todayKey();
   const entries = logs[today] || [];
-  const days = getLast30();
+  const days = last30();
 
-  // Header date
   document.getElementById('headerDate').textContent = fmtDate(today);
-
-  // Stats
   const activeDays = days.filter(d => logs[d] && logs[d].length > 0).length;
   const total = days.reduce((s, d) => s + (logs[d] ? logs[d].length : 0), 0);
   document.getElementById('streakNum').textContent = calcStreak(logs);
@@ -321,24 +343,24 @@ function renderAll() {
   list.innerHTML = '';
   empty.style.display = entries.length === 0 ? 'block' : 'none';
   entries.forEach((e, i) => {
-    const habit = getAllHabits()[e.category] || HABITS_DEFAULT.other;
+    const habit = allHabits()[e.category] || HABITS_DEFAULT.other;
     const li = document.createElement('li');
     li.className = 'todo-item';
     li.innerHTML = `
       <span class="todo-icon">${habit.icon}</span>
       <div class="todo-content">
-        <div class="todo-category">${habit.label}</div>
-        <div class="todo-text">${e.text || '—'}</div>
+        <div class="todo-cat">${habit.label}</div>
+        <div class="todo-text">${e.text || '&mdash;'}</div>
         <div class="todo-time">${fmtTime(e.timestamp)}</div>
       </div>
-      <div class="todo-actions">
-        <button class="todo-action-btn" onclick="openEditModal(${i})" title="Edit">✎</button>
-        <button class="todo-action-btn del" onclick="deleteEntry(${i})" title="Delete">×</button>
+      <div class="todo-btns">
+        <button class="icon-btn" onclick="openEditEntry(${i})">✎</button>
+        <button class="icon-btn del" onclick="deleteEntry(${i})">×</button>
       </div>`;
     list.appendChild(li);
   });
 
-  // 30 days grid
+  // 30 days
   const grid = document.getElementById('daysGrid');
   grid.innerHTML = '';
   days.forEach(day => {
@@ -346,19 +368,19 @@ function renderAll() {
     const isToday = day === today;
     const cell = document.createElement('div');
     cell.className = 'day-cell' + (ents.length > 0 ? ' has-entries' : '') + (isToday ? ' is-today' : '');
-    cell.innerHTML = `<div class="day-tooltip">${fmtDate(day)}${ents.length > 0 ? ' · ' + ents.length : ''}</div>
+    cell.innerHTML = `<div class="day-tip">${fmtDate(day)}${ents.length > 0 ? ' · ' + ents.length : ''}</div>
       ${ents.length > 0 ? `<span class="day-count">${ents.length}</span>` : isToday ? '<div class="today-dot"></div>' : ''}`;
     grid.appendChild(cell);
   });
 }
 
-// ── Entry actions ─────────────────────────────
+// Entry actions
 function addEntry() {
   const input = document.getElementById('activityInput');
-  const cat = document.getElementById('categorySelect').value;
   const text = input.value.trim();
+  const cat = document.getElementById('categorySelect').value;
   const logs = loadLogs();
-  const today = getTodayKey();
+  const today = todayKey();
   if (!logs[today]) logs[today] = [];
   logs[today].push({ text, category: cat, timestamp: new Date().toISOString() });
   saveLogs(logs);
@@ -366,38 +388,38 @@ function addEntry() {
   renderAll();
 }
 
-function deleteEntry(index) {
+function deleteEntry(i) {
   const logs = loadLogs();
-  const today = getTodayKey();
-  if (logs[today]) { logs[today].splice(index, 1); saveLogs(logs); renderAll(); }
+  const today = todayKey();
+  if (logs[today]) { logs[today].splice(i, 1); saveLogs(logs); renderAll(); }
 }
 
-// ── Edit modal ────────────────────────────────
-function openEditModal(index) {
+function openEditEntry(i) {
   const logs = loadLogs();
-  const entry = (logs[getTodayKey()] || [])[index];
+  const entry = (logs[todayKey()] || [])[i];
   if (!entry) return;
-  editingIndex = index;
+  editingEntryIndex = i;
   document.getElementById('modalText').value = entry.text || '';
   populateSelects();
   document.getElementById('modalCategory').value = entry.category || 'other';
-  document.getElementById('editModal').classList.add('open');
+  openModal('editModal');
   setTimeout(() => document.getElementById('modalText').focus(), 100);
 }
 
 function saveEdit() {
-  if (editingIndex < 0) return;
+  if (editingEntryIndex < 0) return;
   const logs = loadLogs();
-  const today = getTodayKey();
-  if (!logs[today] || !logs[today][editingIndex]) return;
-  logs[today][editingIndex].text = document.getElementById('modalText').value.trim();
-  logs[today][editingIndex].category = document.getElementById('modalCategory').value;
+  const today = todayKey();
+  if (!logs[today] || !logs[today][editingEntryIndex]) return;
+  logs[today][editingEntryIndex].text = document.getElementById('modalText').value.trim();
+  logs[today][editingEntryIndex].category = document.getElementById('modalCategory').value;
   saveLogs(logs);
   closeModal('editModal');
+  editingEntryIndex = -1;
   renderAll();
 }
 
-// ── Add category modal ────────────────────────
+// Category actions
 function openAddCatModal() {
   selectedEmoji = '⭐';
   document.getElementById('newCatName').value = '';
@@ -405,7 +427,7 @@ function openAddCatModal() {
   document.getElementById('emojiPicker').innerHTML = EMOJI_OPTIONS.map(e =>
     `<span class="emoji-opt${e === selectedEmoji ? ' selected' : ''}" onclick="selectEmoji('${e}',this)">${e}</span>`
   ).join('');
-  document.getElementById('addCatModal').classList.add('open');
+  openModal('addCatModal');
   setTimeout(() => document.getElementById('newCatName').focus(), 100);
 }
 
@@ -418,72 +440,132 @@ function selectEmoji(emoji, el) {
 
 function saveNewCategory() {
   const name = document.getElementById('newCatName').value.trim();
-  const iconInput = document.getElementById('newCatIcon').value.trim();
   if (!name) { document.getElementById('newCatName').focus(); return; }
-  const icon = iconInput || selectedEmoji;
+  const icon = document.getElementById('newCatIcon').value.trim() || selectedEmoji;
   const key = 'custom_' + Date.now();
-  const custom = loadCustomCats();
-  custom[key] = { label: name, icon };
-  saveCustomCats(custom);
+  const cats = loadCats();
+  cats[key] = { label: name, icon };
+  saveCats(cats);
   populateSelects();
   closeModal('addCatModal');
 }
 
-function closeModal(id) {
-  document.getElementById(id).classList.remove('open');
-  if (id === 'editModal') editingIndex = -1;
+// Project actions
+function renderProjects() {
+  const projects = loadProjs();
+  const list = document.getElementById('projectsList');
+  list.innerHTML = '';
+  if (projects.length === 0) {
+    list.innerHTML = '<li style="color:#2a2a2a;font-size:13px;font-style:italic;padding:10px 0;">No projects yet.</li>';
+    return;
+  }
+  projects.forEach((p, i) => {
+    const isActive = p.status === 'active';
+    const li = document.createElement('li');
+    li.className = 'project-item';
+    li.innerHTML = `
+      <div class="proj-dot" style="background:${isActive ? '#4a9a4a' : '#886633'}"></div>
+      <div class="proj-content">
+        <div class="proj-name">${p.name}</div>
+        ${p.desc ? `<div class="proj-desc">${p.desc}</div>` : ''}
+        <div class="proj-status ${isActive ? 'status-active' : 'status-paused'}">${isActive ? '● Active' : '● Paused'}</div>
+      </div>
+      <div class="proj-btns">
+        <button class="icon-btn" onclick="openProjectModal(${i})">✎</button>
+        <button class="icon-btn del" onclick="deleteProject(${i})">×</button>
+      </div>`;
+    list.appendChild(li);
+  });
 }
 
+function openProjectModal(i) {
+  editingProjectIndex = i;
+  document.getElementById('projModalTitle').textContent = i >= 0 ? 'Edit Project' : 'New Project';
+  if (i >= 0) {
+    const p = loadProjs()[i];
+    document.getElementById('projName').value = p.name || '';
+    document.getElementById('projDesc').value = p.desc || '';
+    document.getElementById('projStatus').value = p.status || 'active';
+  } else {
+    document.getElementById('projName').value = '';
+    document.getElementById('projDesc').value = '';
+    document.getElementById('projStatus').value = 'active';
+  }
+  openModal('projectModal');
+  setTimeout(() => document.getElementById('projName').focus(), 100);
+}
+
+function saveProject() {
+  const name = document.getElementById('projName').value.trim();
+  if (!name) { document.getElementById('projName').focus(); return; }
+  const entry = { name, desc: document.getElementById('projDesc').value.trim(), status: document.getElementById('projStatus').value };
+  const projects = loadProjs();
+  if (editingProjectIndex >= 0) projects[editingProjectIndex] = entry;
+  else projects.push(entry);
+  saveProjs(projects);
+  closeModal('projectModal');
+  editingProjectIndex = -1;
+  renderProjects();
+}
+
+function deleteProject(i) {
+  const projects = loadProjs();
+  projects.splice(i, 1);
+  saveProjs(projects);
+  renderProjects();
+}
+
+// Modal helpers
+function openModal(id)  { document.getElementById(id).classList.add('open'); }
+function closeModal(id) { document.getElementById(id).classList.remove('open'); }
 document.querySelectorAll('.modal-overlay').forEach(el => {
   el.addEventListener('click', function(e) { if (e.target === this) this.classList.remove('open'); });
 });
 
-// ── Skills Map ────────────────────────────────
+// Skills map
 function buildMap() {
   const svg = document.getElementById('skillMap');
-
   CONNECTIONS.forEach(c => {
     const f = SKILLS.find(s => s.id === c.from), t = SKILLS.find(s => s.id === c.to);
-    const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
-    line.setAttribute('x1', f.cx); line.setAttribute('y1', f.cy);
-    line.setAttribute('x2', t.cx); line.setAttribute('y2', t.cy);
-    line.setAttribute('stroke', '#1e1e1e'); line.setAttribute('stroke-width', '1');
+    const line = document.createElementNS('http://www.w3.org/2000/svg','line');
+    line.setAttribute('x1',f.cx); line.setAttribute('y1',f.cy);
+    line.setAttribute('x2',t.cx); line.setAttribute('y2',t.cy);
+    line.setAttribute('stroke','#1e1e1e'); line.setAttribute('stroke-width','1');
     line.dataset.from = c.from; line.dataset.to = c.to;
     line.classList.add('conn-line'); line.style.transition = 'all 0.25s';
     svg.appendChild(line);
   });
 
-  // Center
-  const cg = document.createElementNS('http://www.w3.org/2000/svg', 'g');
-  const cc = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
-  cc.setAttribute('cx', 220); cc.setAttribute('cy', 220); cc.setAttribute('r', '42');
-  cc.setAttribute('fill', '#141414'); cc.setAttribute('stroke', '#E8C547'); cc.setAttribute('stroke-width', '1.5');
+  const cg = document.createElementNS('http://www.w3.org/2000/svg','g');
+  const cc = document.createElementNS('http://www.w3.org/2000/svg','circle');
+  cc.setAttribute('cx',220); cc.setAttribute('cy',220); cc.setAttribute('r',42);
+  cc.setAttribute('fill','#141414'); cc.setAttribute('stroke','#E8C547'); cc.setAttribute('stroke-width','1.5');
   const mkT = (y, txt) => {
-    const el = document.createElementNS('http://www.w3.org/2000/svg', 'text');
-    el.setAttribute('x', 220); el.setAttribute('y', y); el.setAttribute('text-anchor', 'middle');
-    el.setAttribute('fill', '#E8C547'); el.setAttribute('font-size', '12');
-    el.setAttribute('font-family', 'Playfair Display, serif'); el.textContent = txt;
+    const el = document.createElementNS('http://www.w3.org/2000/svg','text');
+    el.setAttribute('x',220); el.setAttribute('y',y); el.setAttribute('text-anchor','middle');
+    el.setAttribute('fill','#E8C547'); el.setAttribute('font-size','12');
+    el.setAttribute('font-family','Playfair Display,serif'); el.textContent = txt;
     return el;
   };
-  cg.appendChild(cc); cg.appendChild(mkT(214, 'BUILD')); cg.appendChild(mkT(230, 'ANYWAY'));
+  cg.appendChild(cc); cg.appendChild(mkT(214,'BUILD')); cg.appendChild(mkT(230,'ANYWAY'));
   svg.appendChild(cg);
 
   SKILLS.forEach(s => {
-    const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+    const g = document.createElementNS('http://www.w3.org/2000/svg','g');
     g.classList.add('skill-node'); g.dataset.id = s.id; g.style.cursor = 'pointer';
-    const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
-    circle.setAttribute('cx', s.cx); circle.setAttribute('cy', s.cy); circle.setAttribute('r', '42');
-    circle.setAttribute('fill', '#141414'); circle.setAttribute('stroke', '#2a2a2a');
-    circle.setAttribute('stroke-width', '1.5'); circle.style.transition = 'all 0.25s';
-    const t1 = document.createElementNS('http://www.w3.org/2000/svg', 'text');
-    t1.setAttribute('x', s.cx); t1.setAttribute('y', s.cy - 5);
-    t1.setAttribute('text-anchor', 'middle'); t1.setAttribute('fill', '#d0cbc0');
-    t1.setAttribute('font-size', '13'); t1.setAttribute('font-family', 'Playfair Display, serif');
-    t1.setAttribute('font-weight', '700'); t1.textContent = s.label;
-    const t2 = document.createElementNS('http://www.w3.org/2000/svg', 'text');
-    t2.setAttribute('x', s.cx); t2.setAttribute('y', s.cy + 12);
-    t2.setAttribute('text-anchor', 'middle'); t2.setAttribute('fill', '#555');
-    t2.setAttribute('font-size', '10'); t2.setAttribute('font-family', 'Lora, serif');
+    const circle = document.createElementNS('http://www.w3.org/2000/svg','circle');
+    circle.setAttribute('cx',s.cx); circle.setAttribute('cy',s.cy); circle.setAttribute('r',42);
+    circle.setAttribute('fill','#141414'); circle.setAttribute('stroke','#2a2a2a');
+    circle.setAttribute('stroke-width','1.5'); circle.style.transition = 'all 0.25s';
+    const t1 = document.createElementNS('http://www.w3.org/2000/svg','text');
+    t1.setAttribute('x',s.cx); t1.setAttribute('y',s.cy - 5);
+    t1.setAttribute('text-anchor','middle'); t1.setAttribute('fill','#d0cbc0');
+    t1.setAttribute('font-size','13'); t1.setAttribute('font-family','Playfair Display,serif');
+    t1.setAttribute('font-weight','700'); t1.textContent = s.label;
+    const t2 = document.createElementNS('http://www.w3.org/2000/svg','text');
+    t2.setAttribute('x',s.cx); t2.setAttribute('y',s.cy + 12);
+    t2.setAttribute('text-anchor','middle'); t2.setAttribute('fill','#555');
+    t2.setAttribute('font-size','10'); t2.setAttribute('font-family','Lora,serif');
     t2.textContent = s.sub;
     g.appendChild(circle); g.appendChild(t1); g.appendChild(t2);
     g.addEventListener('click', () => toggleSkill(s.id));
@@ -495,45 +577,42 @@ function toggleSkill(id) {
   activeSkill = activeSkill === id ? null : id;
   document.querySelectorAll('.conn-line').forEach(line => {
     const active = activeSkill && (line.dataset.from === activeSkill || line.dataset.to === activeSkill);
-    const inactive = activeSkill && !active;
     line.setAttribute('stroke', active ? '#E8C547' : '#1e1e1e');
     line.setAttribute('stroke-width', active ? '2' : '0.8');
-    line.style.opacity = inactive ? '0.04' : '1';
+    line.style.opacity = (activeSkill && !active) ? '0.04' : '1';
   });
   document.querySelectorAll('.skill-node').forEach(g => {
     const sid = g.dataset.id;
     const isActive = activeSkill === sid;
     const connected = activeSkill && CONNECTIONS.some(c => (c.from === activeSkill && c.to === sid) || (c.to === activeSkill && c.from === sid));
     const inactive = activeSkill && !isActive && !connected;
-    const circle = g.querySelector('circle');
-    const t1 = g.querySelectorAll('text')[0];
-    circle.setAttribute('fill', isActive ? '#E8C547' : connected ? '#1e1a08' : '#141414');
-    circle.setAttribute('stroke', isActive || connected ? '#E8C547' : '#2a2a2a');
-    t1.setAttribute('fill', isActive ? '#0c0c0c' : '#d0cbc0');
+    g.querySelector('circle').setAttribute('fill', isActive ? '#E8C547' : connected ? '#1e1a08' : '#141414');
+    g.querySelector('circle').setAttribute('stroke', (isActive || connected) ? '#E8C547' : '#2a2a2a');
+    g.querySelectorAll('text')[0].setAttribute('fill', isActive ? '#0c0c0c' : '#d0cbc0');
     g.style.opacity = inactive ? '0.15' : '1';
   });
-
   const el = document.getElementById('connectionInfo');
   if (!activeSkill) { el.innerHTML = '<div class="map-tagline">Every skill serves the same mission.</div>'; return; }
   const skill = SKILLS.find(s => s.id === activeSkill);
   const conns = CONNECTIONS.filter(c => c.from === activeSkill || c.to === activeSkill);
-  el.innerHTML = `<div class="connection-info">
-    <div class="connection-title">${skill.label} connects to:</div>
+  el.innerHTML = `<div class="conn-info">
+    <div class="conn-title">${skill.label} connects to:</div>
     ${conns.map(c => {
       const oid = c.from === activeSkill ? c.to : c.from;
       const other = SKILLS.find(s => s.id === oid);
-      return `<div class="connection-item"><div class="connection-dot"></div>
-        <div><span class="conn-other">${other.label}</span><span class="conn-label"> — ${c.label}</span></div></div>`;
+      return `<div class="conn-item"><div class="conn-dot"></div>
+        <div><span class="conn-other">${other.label}</span><span class="conn-lbl"> — ${c.label}</span></div></div>`;
     }).join('')}
     <button class="clear-btn" onclick="toggleSkill('${activeSkill}')">Clear</button>
   </div>`;
 }
 
-// ── Init ──────────────────────────────────────
+// Init
 buildMap();
 toggleSkill(null);
 populateSelects();
 renderAll();
+renderProjects();
 </script>
 </body>
 </html>
