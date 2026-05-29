@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Michael's Productivity Dashboard</title>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.6/dist/umd/supabase.min.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&family=Lora:ital,wght@0,400;0,500;1,400&display=swap" rel="stylesheet">
 <style>
   :root { --gold:#E8C547; --bg:#0c0c0c; --bg2:#131313; --border:#222; --text:#e8e0d0; --muted:#666; --green:#4a9a4a; }
@@ -265,7 +265,9 @@
 // ── Supabase ──────────────────────────────────
 const SUPABASE_URL = 'https://puzogmzjhttrooofggbo.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_xtT7jEdVAwrIj9450jy2Sg_alK9AuaG';
-const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY, {
+  auth: { persistSession: false, autoRefreshToken: false }
+});
 
 // Persistent anonymous user ID
 function getUserId() {
@@ -287,6 +289,13 @@ function setSynced() {
 function setError() {
   document.getElementById('syncDot').className = 'sync-dot';
   document.getElementById('syncText').textContent = 'Offline';
+}
+function setSyncStatus(type, msg) {
+  const dot = document.getElementById('syncDot');
+  const txt = document.getElementById('syncText');
+  if (type === 'error') { dot.className = 'sync-dot'; txt.textContent = msg || 'Error'; }
+  else if (type === 'ok') { dot.className = 'sync-dot green'; txt.textContent = msg || 'Synced'; }
+  else { dot.className = 'sync-dot yellow'; txt.textContent = msg || 'Saving...'; }
 }
 
 function showLoading() { document.getElementById('loadingOverlay').classList.add('show'); }
@@ -317,10 +326,13 @@ async function saveLog(date, entries) {
   logs[date] = entries;
   cacheSet('msilas-logs', logs);
   try {
-    const { error } = await sb.from('activity_logs').upsert({ user_id: USER_ID, date, entries, updated_at: new Date().toISOString() }, { onConflict: 'user_id,date' });
-    if (error) throw error;
+    const { error } = await sb.from('activity_logs').upsert(
+      { user_id: USER_ID, date, entries, updated_at: new Date().toISOString() },
+      { onConflict: 'user_id,date' }
+    );
+    if (error) { console.error('saveLog error:', error.message, error.details); throw error; }
     setSynced();
-  } catch { setError(); }
+  } catch(e) { console.error('saveLog failed:', e); setError(); }
 }
 
 // ── Categories ────────────────────────────────
