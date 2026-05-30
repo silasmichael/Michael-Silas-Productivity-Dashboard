@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Michael's Productivity Dashboard</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.6/dist/umd/supabase.min.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&family=Lora:ital,wght@0,400;0,500;1,400&display=swap" rel="stylesheet">
 <style>
   :root { --gold:#E8C547; --bg:#0c0c0c; --bg2:#131313; --border:#222; --text:#e8e0d0; --muted:#666; --green:#4a9a4a; }
@@ -31,9 +32,10 @@
   .section-label::after { content:''; flex:1; height:1px; background:var(--border); }
 
   /* STATS */
-  .top-stats { display:grid; grid-template-columns:1fr 1fr 1fr; gap:10px; padding:16px 0; }
+  .top-stats { display:grid; grid-template-columns:1fr 1fr 1fr; gap:10px; padding:166px 0; padding:16px 0; }
   .stat-box { background:var(--bg2); border-radius:10px; padding:14px; text-align:center; border:1px solid var(--border); }
   .stat-number { font-family:'Playfair Display',serif; font-size:28px; color:var(--gold); font-weight:700; line-height:1; }
+  .stat-number.dim { color:#333; }
   .stat-label { font-size:9px; color:#444; margin-top:4px; text-transform:uppercase; letter-spacing:1px; }
 
   /* ADD ENTRY */
@@ -91,7 +93,7 @@
   .add-proj-btn:hover { color:var(--gold); border-color:var(--gold); }
 
   /* SKILLS MAP */
-  #skillMap { width:100%; height:460px; background:#080808; border:1px solid var(--border); border-radius:12px; display:block; overflow:hidden; user-select:none; }
+  #skillMap { width:100%; height:auto; display:block; }
   .map-hint { font-size:11px; color:#444; text-align:center; margin-bottom:10px; font-style:italic; }
   .conn-info { margin-top:12px; background:var(--bg2); border:1px solid var(--border); border-left:3px solid var(--gold); border-radius:8px; padding:14px; }
   .conn-title { font-family:'Playfair Display',serif; font-size:14px; color:var(--gold); margin-bottom:10px; }
@@ -119,14 +121,26 @@
   .modal-save:hover { background:#f0d060; }
   .modal-cancel { flex:1; background:none; border:1px solid var(--border); border-radius:8px; padding:12px; color:#555; font-size:14px; font-family:'Lora',serif; cursor:pointer; transition:color 0.2s,border-color 0.2s; }
   .modal-cancel:hover { color:var(--text); border-color:#555; }
-  .modal-delete { background:#4a1515; border:1px solid #6a2525; color:#ffaaaa; border-radius:8px; padding:12px 16px; font-size:13px; cursor:pointer; font-family:'Lora',serif; margin-bottom:18px; width:100%; transition:background 0.2s; text-align:center; }
-  .modal-delete:hover { background:#6a2525; }
   .emoji-picker { display:flex; flex-wrap:wrap; gap:7px; background:var(--bg2); border:1px solid var(--border); border-radius:8px; padding:10px; margin-bottom:4px; }
   .emoji-opt { font-size:20px; cursor:pointer; padding:4px; border-radius:6px; transition:background 0.15s; }
   .emoji-opt:hover,.emoji-opt.selected { background:#2a2a2a; }
 
+  .loading-overlay { display:none; position:fixed; inset:0; background:rgba(12,12,12,0.8); z-index:200; align-items:center; justify-content:center; flex-direction:column; gap:12px; }
+  .loading-overlay.show { display:flex; }
+  .spinner { width:32px; height:32px; border:2px solid #222; border-top-color:var(--gold); border-radius:50%; animation:spin 0.7s linear infinite; }
+  @keyframes spin { to { transform:rotate(360deg); } }
+  .loading-text { font-size:12px; color:#555; letter-spacing:1px; text-transform:uppercase; }
   .sync-badge { position:fixed; bottom:16px; right:16px; background:var(--bg2); border:1px solid var(--border); border-radius:20px; padding:6px 12px; font-size:10px; color:#444; letter-spacing:1px; text-transform:uppercase; z-index:50; display:flex; align-items:center; gap:6px; }
-  .sync-dot { width:6px; height:6px; border-radius:50%; background:var(--green); }
+  .sync-dot { width:6px; height:6px; border-radius:50%; background:#444; }
+  .sync-dot.green { background:var(--green); }
+  .sync-dot.yellow { background:#886633; animation:pulse 1.5s infinite; }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.3} }
+
+  .debug-box { display:none; margin:12px 0; background:#1a0a0a; border:1px solid #4a1a1a; border-left:3px solid #cc4444; border-radius:8px; padding:14px; }
+  .debug-box.show { display:block; }
+  .debug-title { font-size:10px; color:#cc4444; letter-spacing:1px; text-transform:uppercase; margin-bottom:8px; }
+  .debug-msg { font-size:12px; color:#aa6666; line-height:1.6; word-break:break-all; font-family:monospace; }
+  .debug-close { margin-top:10px; background:none; border:1px solid #4a1a1a; border-radius:4px; color:#666; font-size:11px; padding:4px 10px; cursor:pointer; }
 
   .skill-conn-item { display:flex; align-items:flex-start; gap:10px; padding:8px 0; border-bottom:1px solid var(--border); }
   .skill-conn-item:last-child { border-bottom:none; }
@@ -135,29 +149,28 @@
   .skill-conn-desc { width:100%; background:var(--bg); border:1px solid var(--border); border-radius:4px; padding:5px 8px; color:var(--text); font-size:11px; font-family:'Lora',serif; outline:none; margin-top:4px; display:none; }
   .skill-conn-desc.show { display:block; }
   .skill-conn-desc:focus { border-color:var(--gold); }
-  
-  /* SVG MIND MAP BADGE STYLING */
-  .node-rect { fill:#141414; stroke:#2a2a2a; stroke-width:1.5; rx:8; ry:8; transition: fill 0.2s, stroke 0.2s; }
-  .skill-node:hover .node-rect { stroke:#555; }
-  .node-title { fill:#d0cbc0; font-size:13px; font-family:'Playfair Display',serif; font-weight:700; text-anchor:middle; pointer-events:none; }
-  .node-sub { fill:#666; font-size:9.5px; font-family:'Lora',serif; text-anchor:middle; pointer-events:none; }
-  .conn-line { stroke:#222; stroke-width:1.5; transition: stroke 0.2s, stroke-width 0.2s; }
-  .link-dot { fill:#333; transition: fill 0.2s; }
-  
-  /* Helper to estimate layout dimensions safely before building graphics */
-  #textMeasureHelper { position:absolute; visibility:hidden; height:auto; width:auto; white-space:nowrap; }
+
+  /* SORTABLE SKILL MAP STYLES */
+  .skill-list { margin-top:12px; }
+  .skill-list-item { display:flex; align-items:center; gap:10px; padding:10px 12px; background:var(--bg2); border:1px solid var(--border); border-radius:8px; margin-bottom:6px; cursor:grab; user-select:none; }
+  .skill-list-item:active { cursor:grabbing; }
+  .skill-list-item.dragging { opacity:0.4; border:1px dashed var(--gold); }
+  .skill-list-name { font-family:'Playfair Display',serif; font-size:13px; color:var(--text); flex:1; }
+  .skill-list-sub { font-size:11px; color:var(--muted); }
+
 </style>
 </head>
 <body>
 
-<div id="textMeasureHelper"></div>
-
-<div class="sync-badge">
-  <div class="sync-dot"></div>
-  <span>Mind Map Custom Layout Enabled</span>
+<div class="loading-overlay" id="loadingOverlay">
+  <div class="spinner"></div>
+  <div class="loading-text">Syncing...</div>
+</div>
+<div class="sync-badge" id="syncBadge">
+  <div class="sync-dot green" id="syncDot"></div>
+  <span id="syncText">Synced</span>
 </div>
 
-<!-- EDIT ENTRY MODAL -->
 <div class="modal-overlay" id="editModal">
   <div class="modal">
     <div class="modal-title">Edit Entry</div>
@@ -172,17 +185,13 @@
   </div>
 </div>
 
-<!-- EDIT SKILL MODAL -->
 <div class="modal-overlay" id="editSkillModal">
-  <div class="modal" style="max-height: 85vh; overflow-y: auto;">
+  <div class="modal">
     <div class="modal-title">Edit Skill</div>
-    <button class="modal-delete" onclick="deleteCurrentSkill()">⚠️ Delete This Skill</button>
     <label class="modal-label">Skill name</label>
     <input type="text" class="modal-input" id="editSkillName" placeholder="Skill name">
     <label class="modal-label">Subtitle</label>
     <input type="text" class="modal-input" id="editSkillSub" placeholder="e.g. Callipeg, Procreate...">
-    <label class="modal-label">Modify Skill Connections</label>
-    <div id="editSkillConnectionPicker" style="background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:12px;margin-bottom:14px;max-height:180px;overflow-y:auto;"></div>
     <div class="modal-btns">
       <button class="modal-cancel" onclick="closeModal('editSkillModal')">Cancel</button>
       <button class="modal-save" onclick="updateSkill()">Save</button>
@@ -190,7 +199,6 @@
   </div>
 </div>
 
-<!-- ADD SKILL MODAL -->
 <div class="modal-overlay" id="addSkillModal">
   <div class="modal">
     <div class="modal-title">New Skill</div>
@@ -207,7 +215,6 @@
   </div>
 </div>
 
-<!-- ADD CATEGORY MODAL -->
 <div class="modal-overlay" id="addCatModal">
   <div class="modal">
     <div class="modal-title">New Category</div>
@@ -223,7 +230,6 @@
   </div>
 </div>
 
-<!-- PROJECT MODAL -->
 <div class="modal-overlay" id="projectModal">
   <div class="modal">
     <div class="modal-title" id="projModalTitle">New Project</div>
@@ -232,7 +238,20 @@
     <label class="modal-label">Short description (optional)</label>
     <input type="text" class="modal-input" id="projDesc" placeholder="What is this about?">
     <label class="modal-label">Linked to Category (auto-tracks days)</label>
-    <select class="modal-select" id="projCategory"></select>
+    <select class="modal-select" id="projCategory">
+      <option value="">— None —</option>
+      <option value="writing">✍️ Writing / Editing</option>
+      <option value="animation">🎬 Animation</option>
+      <option value="design">🎨 Design / Cover work</option>
+      <option value="coding">💻 Website / Coding</option>
+      <option value="reading">📖 Reading</option>
+      <option value="community">🤝 Community / Outreach</option>
+      <option value="instagram">📱 Instagram Post</option>
+      <option value="vibe">🎁 Vibe Gift Shop</option>
+      <option value="book_hangout">📚 Book Hangout</option>
+      <option value="epicenter">🌍 Epicenter of Life</option>
+      <option value="other">⚡ Other</option>
+    </select>
     <label class="modal-label">Status</label>
     <select class="modal-select" id="projStatus">
       <option value="active">🟢 Active</option>
@@ -246,11 +265,16 @@
   </div>
 </div>
 
-<!-- PAGE -->
 <div class="page-wrap">
   <div class="header">
     <div class="header-title">Michael's Productivity Dashboard</div>
     <div class="header-date" id="headerDate"></div>
+  </div>
+
+  <div class="debug-box" id="debugBox">
+    <div class="debug-title">Connection Error</div>
+    <div class="debug-msg" id="debugMsg"></div>
+    <button class="debug-close" onclick="document.getElementById('debugBox').classList.remove('show')">Dismiss</button>
   </div>
 
   <div class="top-stats">
@@ -260,25 +284,28 @@
   </div>
 
   <div class="desktop-grid">
-    <!-- LEFT: Interactive Mind Map View -->
+
     <div class="desktop-left">
+
       <div class="section" style="display:flex;align-items:center;justify-content:space-between;">
-        <div class="section-label" style="flex:1;margin-bottom:0;">Skills Mind Map</div>
+        <div class="section-label" style="flex:1;margin-bottom:0;">Skills Map</div>
         <button class="add-cat-btn" style="margin-bottom:14px;" onclick="openAddSkillModal()">+ Skill</button>
       </div>
-      <div class="map-hint">Drag badges to arrange them • Click to trace pathways • Double-tap to edit/delete</div>
-      <svg id="skillMap"></svg>
+      <div class="map-hint">Tap a skill to see how it connects (Drag items below to sort)</div>
+      <svg id="skillMap" viewBox="0 0 440 440"></svg>
       <div id="connectionInfo"></div>
+      <div class="skill-list" id="skillList"></div>
 
       <div class="section" style="margin-top:16px;">
         <div class="section-label">Current Projects</div>
       </div>
       <ul class="projects-list" id="projectsList"></ul>
       <button class="add-proj-btn" onclick="openProjectModal(null)">+ Add Project</button>
+
     </div>
 
-    <!-- RIGHT: Today + 30 Days -->
     <div class="desktop-right">
+
       <div class="section">
         <div class="section-label">Today</div>
       </div>
@@ -297,12 +324,155 @@
         <div class="section-label">Last 30 Days</div>
       </div>
       <div class="days-grid" id="daysGrid"></div>
+
     </div>
+
   </div>
 </div>
 
 <script>
-// ── Core Mind Map Setup & Data Cache ────────────────────
+// ── Supabase ──────────────────────────────────
+const SUPABASE_URL = 'https://puzogmzjhttrooofggbo.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_xtT7jEdVAwrIj9450jy2Sg_alK9AuaG';
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY, {
+  auth: { persistSession: false, autoRefreshToken: false }
+});
+
+// Persistent anonymous user ID
+function getUserId() {
+  let id = localStorage.getItem('msilas-uid');
+  if (!id) { id = 'user_' + Math.random().toString(36).slice(2) + Date.now().toString(36); localStorage.setItem('msilas-uid', id); }
+  return id;
+}
+const USER_ID = getUserId();
+
+// Sync status
+function setSyncing() {
+  document.getElementById('syncDot').className = 'sync-dot yellow';
+  document.getElementById('syncText').textContent = 'Saving...';
+}
+function setSynced() {
+  document.getElementById('syncDot').className = 'sync-dot green';
+  document.getElementById('syncText').textContent = 'Synced';
+}
+function setError() {
+  document.getElementById('syncDot').className = 'sync-dot';
+  document.getElementById('syncText').textContent = 'Offline';
+}
+function showDebug(msg, type) {
+  const box = document.getElementById('debugBox');
+  document.getElementById('debugMsg').textContent = msg;
+  box.style.borderLeftColor = type === 'success' ? '#4a9a4a' : '#cc4444';
+  box.classList.add('show');
+}
+
+function setSyncStatus(type, msg) {
+  const dot = document.getElementById('syncDot');
+  const txt = document.getElementById('syncText');
+  if (type === 'error') { dot.className = 'sync-dot'; txt.textContent = msg || 'Error'; }
+  else if (type === 'ok') { dot.className = 'sync-dot green'; txt.textContent = msg || 'Synced'; }
+  else { dot.className = 'sync-dot yellow'; txt.textContent = msg || 'Saving...'; }
+}
+
+function showLoading() { document.getElementById('loadingOverlay').classList.add('show'); }
+function hideLoading() { document.getElementById('loadingOverlay').classList.remove('show'); }
+
+// ── Local cache (fallback) ────────────────────
+function cacheSet(key, val) { try { localStorage.setItem(key, JSON.stringify(val)); } catch {} }
+function cacheGet(key, def) { try { const v = localStorage.getItem(key); return v ? JSON.parse(v) : def; } catch { return def; } }
+
+// ── Logs ──────────────────────────────────────
+async function loadLogs() {
+  try {
+    const { data, error } = await sb.from('activity_logs').select('date,entries').eq('user_id', USER_ID);
+    if (error) { showDebug('Load logs failed: ' + error.message); throw error; }
+    const logs = {};
+    data.forEach(row => { logs[row.date] = row.entries; });
+    cacheSet('msilas-logs', logs);
+    return logs;
+  } catch {
+    setError();
+    return cacheGet('msilas-logs', {});
+  }
+}
+
+async function saveLog(date, entries) {
+  setSyncing();
+  const logs = cacheGet('msilas-logs', {});
+  logs[date] = entries;
+  cacheSet('msilas-logs', logs);
+  try {
+    const { error } = await sb.from('activity_logs').upsert(
+      { user_id: USER_ID, date, entries, updated_at: new Date().toISOString() },
+      { onConflict: 'user_id,date' }
+    );
+    if (error) { console.error('saveLog error:', error.message, error.details); showDebug('Save failed: ' + error.message + (error.hint ? ' — ' + error.hint : '')); throw error; }
+    setSynced();
+  } catch(e) { console.error('saveLog failed:', e); setError(); }
+}
+
+// ── Categories ────────────────────────────────
+async function loadCats() {
+  try {
+    const { data, error } = await sb.from('custom_categories').select('key,label,icon').eq('user_id', USER_ID);
+    if (error) throw error;
+    const cats = {};
+    data.forEach(row => { cats[row.key] = { label: row.label, icon: row.icon }; });
+    cacheSet('msilas-cats', cats);
+    return cats;
+  } catch {
+    return cacheGet('msilas-cats', {});
+  }
+}
+
+async function saveCat(key, label, icon) {
+  setSyncing();
+  const cats = cacheGet('msilas-cats', {});
+  cats[key] = { label, icon };
+  cacheSet('msilas-cats', cats);
+  try {
+    const { error } = await sb.from('custom_categories').upsert({ user_id: USER_ID, key, label, icon }, { onConflict: 'user_id,key' });
+    if (error) throw error;
+    setSynced();
+  } catch { setError(); }
+}
+
+// ── Projects ──────────────────────────────────
+async function loadProjs() {
+  try {
+    const { data, error } = await sb.from('projects').select('*').eq('user_id', USER_ID).order('created_at');
+    if (error) throw error;
+    cacheSet('msilas-projs', data);
+    return data;
+  } catch {
+    return cacheGet('msilas-projs', []);
+  }
+}
+
+async function saveProj(proj, id) {
+  setSyncing();
+  try {
+    if (id) {
+      const { error } = await sb.from('projects').update({ name: proj.name, description: proj.desc, status: proj.status }).eq('id', id).eq('user_id', USER_ID);
+      if (error) throw error;
+    } else {
+      const { error } = await sb.from('projects').insert({ user_id: USER_ID, name: proj.name, description: proj.desc, status: proj.status });
+      if (error) throw error;
+    }
+    setSynced();
+  } catch { setError(); }
+}
+
+async function deleteProj(id) {
+  setSyncing();
+  try {
+    const { error } = await sb.from('projects').delete().eq('id', id).eq('user_id', USER_ID);
+    if (error) throw error;
+    setSynced();
+  } catch { setError(); }
+}
+
+// ── Habits ────────────────────────────────────
 const HABITS_DEFAULT = {
   writing:      { label:"Writing / Editing",   icon:"✍️" },
   animation:    { label:"Animation",            icon:"🎬" },
@@ -317,18 +487,20 @@ const HABITS_DEFAULT = {
   other:        { label:"Other",                icon:"⚡" },
 };
 
-const SKILLS_DEFAULT = [
-  { id:"writing",   label:"Writing",    sub:"Poetry & Books",     x: 220, y: 70 },
-  { id:"animation", label:"Animation",  sub:"Callipeg App",       x: 90,  y: 160 },
-  { id:"drawing",   label:"Drawing",    sub:"Procreate Engine",   x: 90,  y: 300 },
-  { id:"design",    label:"Design",     sub:"Graphic & Covers",   x: 220, y: 390 },
-  { id:"community", label:"Community",  sub:"Book Hangout Core",  x: 350, y: 300 },
-  { id:"faith",     label:"Faith",      sub:"Biblical Study",     x: 350, y: 160 },
-  { id:"coding",    label:"Coding",     sub:"Web Architecture",   x: 220, y: 230 },
-  { id:"reading",   label:"Reading",    sub:"Resource Engine",    x: 70,  y: 40 },
+function allHabits() { return Object.assign({}, HABITS_DEFAULT, cacheGet('msilas-cats', {})); }
+
+let SKILLS = [
+  { id:"writing",   label:"Writing",    sub:"Poetry & Books",   cx:220, cy:62  },
+  { id:"animation", label:"Animation",  sub:"Callipeg",         cx:330, cy:110 },
+  { id:"drawing",   label:"Drawing",    sub:"Procreate",        cx:378, cy:220 },
+  { id:"design",    label:"Design",     sub:"Graphic & Covers", cx:330, cy:330 },
+  { id:"community", label:"Community",  sub:"Book Hangout",     cx:220, cy:378 },
+  { id:"faith",     label:"Faith",      sub:"Biblical Study",   cx:110, cy:330 },
+  { id:"coding",    label:"Coding",     sub:"Web & Apps",       cx:62,  cy:220 },
+  { id:"reading",   label:"Reading",    sub:"Knowledge",        cx:110, cy:110 },
 ];
 
-const CONNECTIONS_DEFAULT = [
+const CONNECTIONS = [
   { from:"writing",   to:"animation",  label:"Animated stories with message" },
   { from:"writing",   to:"design",     label:"Book covers & posters" },
   { from:"writing",   to:"faith",      label:"Friend of God / Unanswered" },
@@ -344,30 +516,17 @@ const CONNECTIONS_DEFAULT = [
 ];
 
 const EMOJI_OPTIONS = ['🎯','🔥','💡','🎙️','🙏','💪','🧘','🏃','🎵','✏️','🎤','📝','🧠','💬','🌱','⭐','🎓','🛠️','📊','💼'];
-
 let selectedEmoji = '⭐';
 let editingSkillId = null;
 let editingEntryIndex = -1;
 let editingProject = null;
 let activeSkill = null;
+let allLogs = {};
+let allProjects = [];
+let projectDayCounts = {};
+let allSkills = [];
+let allConnections = [];
 
-// Dragging Mechanics States
-let draggedNode = null;
-let dragOffsetX = 0;
-let dragOffsetY = 0;
-
-// Application engine states loaded directly from client storage array
-let allLogs = JSON.parse(localStorage.getItem('msilas-logs') || '{}');
-let customCats = JSON.parse(localStorage.getItem('msilas-cats') || '{}');
-let allProjects = JSON.parse(localStorage.getItem('msilas-projs') || '[]');
-let allSkills = JSON.parse(localStorage.getItem('msilas-skills') || '[]');
-let allConnections = JSON.parse(localStorage.getItem('msilas-connections') || '[]');
-let projectLogs = JSON.parse(localStorage.getItem('msilas-project-logs') || '[]');
-
-if (allSkills.length === 0) { allSkills = [...SKILLS_DEFAULT]; localStorage.setItem('msilas-skills', JSON.stringify(allSkills)); }
-if (allConnections.length === 0) { allConnections = [...CONNECTIONS_DEFAULT]; localStorage.setItem('msilas-connections', JSON.stringify(allConnections)); }
-
-function allHabits() { return Object.assign({}, HABITS_DEFAULT, customCats); }
 function todayKey() { return new Date().toISOString().split('T')[0]; }
 function last30() {
   const days = [], t = new Date();
@@ -376,7 +535,6 @@ function last30() {
 }
 function fmtDate(s) { return new Date(s + 'T00:00:00').toLocaleDateString('en-US', { month:'short', day:'numeric' }); }
 function fmtTime(s) { return new Date(s).toLocaleTimeString('en-US', { hour:'numeric', minute:'2-digit' }); }
-
 function calcStreak(logs) {
   let n = 0, t = new Date();
   for (let i = 0; i < 365; i++) {
@@ -388,33 +546,15 @@ function calcStreak(logs) {
   return n;
 }
 
-// Estimates text width dynamically using a hidden container to accurately size boxes
-function estimateTextWidth(text, fontClass) {
-  const helper = document.getElementById('textMeasureHelper');
-  if (fontClass === 'title') {
-    helper.style.fontFamily = "'Playfair Display', serif";
-    helper.style.fontSize = "13px";
-    helper.style.fontWeight = "700";
-  } else {
-    helper.style.fontFamily = "'Lora', serif";
-    helper.style.fontSize = "9.5px";
-    helper.style.fontWeight = "400";
-  }
-  helper.textContent = text;
-  return helper.offsetWidth || 60;
-}
-
 function populateSelects() {
   const opts = Object.entries(allHabits()).map(([k,v]) => `<option value="${k}">${v.icon} ${v.label}</option>`).join('');
-  const projOpts = `<option value="">— None —</option>` + Object.entries(allHabits()).map(([k,v]) => `<option value="${k}">${v.icon} ${v.label}</option>`).join('');
-  
   ['categorySelect','modalCategory'].forEach(id => {
-    const el = document.getElementById(id); if (!el) return;
-    const cur = el.value; el.innerHTML = opts; if (cur) el.value = cur;
+    const el = document.getElementById(id);
+    if (!el) return;
+    const cur = el.value;
+    el.innerHTML = opts;
+    if (cur) el.value = cur;
   });
-  
-  const pSel = document.getElementById('projCategory');
-  if (pSel) { const cur = pSel.value; pSel.innerHTML = projOpts; if (cur) pSel.value = cur; }
 }
 
 function renderAll() {
@@ -425,7 +565,6 @@ function renderAll() {
   document.getElementById('headerDate').textContent = fmtDate(today);
   const activeDays = days.filter(d => allLogs[d] && allLogs[d].length > 0).length;
   const total = days.reduce((s, d) => s + (allLogs[d] ? allLogs[d].length : 0), 0);
-  
   document.getElementById('streakNum').textContent = calcStreak(allLogs);
   document.getElementById('activeDaysNum').textContent = activeDays;
   document.getElementById('totalThingsNum').textContent = total;
@@ -434,7 +573,6 @@ function renderAll() {
   const empty = document.getElementById('emptyState');
   list.innerHTML = '';
   empty.style.display = entries.length === 0 ? 'block' : 'none';
-  
   entries.forEach((e, i) => {
     const habit = allHabits()[e.category] || HABITS_DEFAULT.other;
     const li = document.createElement('li');
@@ -473,29 +611,25 @@ function renderProjects() {
     list.innerHTML = '<li style="color:#2a2a2a;font-size:13px;font-style:italic;padding:10px 0;">No projects yet.</li>';
     return;
   }
-  
-  const counts = {};
-  projectLogs.forEach(rl => { counts[rl.project_id] = (counts[rl.project_id] || 0) + 1; });
-
   const active = allProjects.filter(p => p.status === 'active' || p.status === 'paused');
   const completed = allProjects.filter(p => p.status === 'completed');
 
-  if (active.length > 0) active.forEach(p => list.appendChild(buildProjectItem(p, counts[p.id] || 0)));
+  if (active.length > 0) {
+    active.forEach(p => list.appendChild(buildProjectItem(p)));
+  }
   if (completed.length > 0) {
     const divider = document.createElement('li');
     divider.innerHTML = '<div style="font-size:10px;color:#333;text-transform:uppercase;letter-spacing:1px;padding:12px 0 8px;">Completed</div>';
     list.appendChild(divider);
-    completed.forEach(p => list.appendChild(buildProjectItem(p, counts[p.id] || 0)));
+    completed.forEach(p => list.appendChild(buildProjectItem(p)));
   }
 }
 
-function buildProjectItem(p, days) {
+function buildProjectItem(p) {
   const dotColor = p.status === 'active' ? '#4a9a4a' : p.status === 'completed' ? '#4a7a9a' : '#886633';
   const statusLabel = p.status === 'active' ? '● Active' : p.status === 'completed' ? '✓ Completed' : '● Paused';
   const statusClass = p.status === 'active' ? 'status-active' : p.status === 'completed' ? 'status-completed' : 'status-paused';
-  const habit = allHabits()[p.related_category];
-  const catString = habit ? `${habit.icon} ${habit.label}` : p.related_category;
-  
+  const days = projectDayCounts[p.id] || 0;
   const li = document.createElement('li');
   li.className = 'project-item';
   li.innerHTML = `
@@ -505,7 +639,7 @@ function buildProjectItem(p, days) {
       ${p.description ? `<div class="proj-desc">${p.description}</div>` : ''}
       <div style="display:flex;align-items:center;gap:12px;margin-top:5px;flex-wrap:wrap;">
         <div class="proj-status ${statusClass}">${statusLabel}</div>
-        ${p.related_category ? `<div style="font-size:10px;color:#555;">${catString}</div>` : ''}
+        ${p.related_category ? `<div style="font-size:10px;color:#555;">${getCategoryIcon(p.related_category)} ${p.related_category}</div>` : ''}
         ${days > 0 ? `<div style="font-size:10px;color:var(--gold);">📅 ${days} day${days !== 1 ? 's' : ''}</div>` : ''}
       </div>
     </div>
@@ -516,41 +650,41 @@ function buildProjectItem(p, days) {
   return li;
 }
 
-function addEntry() {
+async function addEntry() {
   const input = document.getElementById('activityInput');
   const text = input.value.trim();
   const cat = document.getElementById('categorySelect').value;
   const today = todayKey();
-  
   if (!allLogs[today]) allLogs[today] = [];
   allLogs[today].push({ text, category: cat, timestamp: new Date().toISOString() });
-  localStorage.setItem('msilas-logs', JSON.stringify(allLogs));
-  
   input.value = '';
   renderAll();
-  autoTrackProjects(cat, today);
+  await saveLog(today, allLogs[today]);
+  await autoTrackProjects(cat, today);
 }
 
-function autoTrackProjects(category, date) {
+async function autoTrackProjects(category, date) {
   const matched = allProjects.filter(p => p.status === 'active' && p.related_category === category);
-  matched.forEach(p => {
-    const alreadyLogged = projectLogs.some(rl => rl.project_id === p.id && rl.date === date);
-    if (!alreadyLogged) {
-      projectLogs.push({ project_id: p.id, date: date });
-    }
-  });
+  for (const p of matched) {
+    try {
+      await sb.from('project_logs').upsert(
+        { user_id: USER_ID, project_id: p.id, date },
+        { onConflict: 'user_id,project_id,date' }
+      );
+    } catch(e) { console.error('autoTrack failed:', e); }
+  }
   if (matched.length > 0) {
-    localStorage.setItem('msilas-project-logs', JSON.stringify(projectLogs));
+    projectDayCounts = await loadProjectDayCounts();
     renderProjects();
   }
 }
 
-function deleteEntry(i) {
+async function deleteEntry(i) {
   const today = todayKey();
   if (allLogs[today]) {
     allLogs[today].splice(i, 1);
-    localStorage.setItem('msilas-logs', JSON.stringify(allLogs));
     renderAll();
+    await saveLog(today, allLogs[today]);
   }
 }
 
@@ -566,17 +700,16 @@ function openEditEntry(i) {
   setTimeout(() => document.getElementById('modalText').focus(), 100);
 }
 
-function saveEdit() {
+async function saveEdit() {
   if (editingEntryIndex < 0) return;
   const today = todayKey();
   if (!allLogs[today] || !allLogs[today][editingEntryIndex]) return;
   allLogs[today][editingEntryIndex].text = document.getElementById('modalText').value.trim();
   allLogs[today][editingEntryIndex].category = document.getElementById('modalCategory').value;
-  localStorage.setItem('msilas-logs', JSON.stringify(allLogs));
   closeModal('editModal');
   editingEntryIndex = -1;
   renderAll();
-  renderProjects();
+  await saveLog(today, allLogs[today]);
 }
 
 function openAddCatModal() {
@@ -597,22 +730,21 @@ function selectEmoji(emoji, el) {
   document.getElementById('newCatIcon').value = '';
 }
 
-function saveNewCategory() {
+async function saveNewCategory() {
   const name = document.getElementById('newCatName').value.trim();
   if (!name) { document.getElementById('newCatName').focus(); return; }
   const icon = document.getElementById('newCatIcon').value.trim() || selectedEmoji;
   const key = 'custom_' + Date.now();
-  
-  customCats[key] = { label: name, icon: icon };
-  localStorage.setItem('msilas-cats', JSON.stringify(customCats));
-  
   closeModal('addCatModal');
+  populateSelects();
+  await saveCat(key, name, icon);
+  const cats = await loadCats();
+  cacheSet('msilas-cats', cats);
   populateSelects();
 }
 
 function openProjectModal(id) {
-  editingProject = id ? id : null;
-  populateSelects();
+  editingProject = (id && id !== '-1' && id !== -1) ? id : null;
   document.getElementById('projModalTitle').textContent = id ? 'Edit Project' : 'New Project';
   if (id) {
     const p = allProjects.find(p => p.id === id);
@@ -632,30 +764,33 @@ function openProjectModal(id) {
   setTimeout(() => document.getElementById('projName').focus(), 100);
 }
 
-function saveProject() {
+async function saveProject() {
   const name = document.getElementById('projName').value.trim();
   if (!name) { document.getElementById('projName').focus(); return; }
   const status = document.getElementById('projStatus').value;
   const description = document.getElementById('projDesc').value.trim();
-  const related_category = document.getElementById('projCategory').value;
-  
-  if (editingProject) {
-    allProjects = allProjects.map(p => p.id === editingProject ? { ...p, name, description, status, related_category } : p);
-  } else {
-    allProjects.push({ id: 'proj_' + Date.now(), name, description, status, related_category, created_at: new Date().toISOString() });
-  }
-  
-  localStorage.setItem('msilas-projs', JSON.stringify(allProjects));
   closeModal('projectModal');
-  editingProject = null;
-  renderProjects();
+  setSyncing();
+  try {
+    if (editingProject && editingProject !== '-1' && editingProject !== -1) {
+      const updates = { name, description, status };
+      if (status === 'completed') updates.completed_at = new Date().toISOString();
+      const { error } = await sb.from('projects').update(updates).eq('id', editingProject).eq('user_id', USER_ID);
+      if (error) { showDebug('Update failed: ' + error.message); throw error; }
+    } else {
+      const { error } = await sb.from('projects').insert({ user_id: USER_ID, name, description, status });
+      if (error) { showDebug('Insert failed: ' + error.message); throw error; }
+    }
+    setSynced();
+    editingProject = null;
+    allProjects = await loadProjs();
+    renderProjects();
+  } catch(e) { setError(); }
 }
 
-function handleDeleteProject(id) {
+async function handleDeleteProject(id) {
+  await deleteProj(id);
   allProjects = allProjects.filter(p => p.id !== id);
-  projectLogs = projectLogs.filter(rl => rl.project_id !== id);
-  localStorage.setItem('msilas-projs', JSON.stringify(allProjects));
-  localStorage.setItem('msilas-project-logs', JSON.stringify(projectLogs));
   renderProjects();
 }
 
@@ -665,206 +800,53 @@ document.querySelectorAll('.modal-overlay').forEach(el => {
   el.addEventListener('click', function(e) { if (e.target === this) this.classList.remove('open'); });
 });
 
-// ── Re-engineered Drag & Auto-Sizing Mind Map View ──
+// Skills map
 function buildMap() {
   const svg = document.getElementById('skillMap');
-  svg.innerHTML = ''; 
-  
-  // Cleanly attach core workspace movement handlers for dragging
-  svg.removeEventListener('mousemove', handleMapMouseMove);
-  svg.removeEventListener('mouseup', handleMapMouseUp);
-  svg.addEventListener('mousemove', handleMapMouseMove);
-  svg.addEventListener('mouseup', handleMapMouseUp);
-  
-  // Pre-calculate dynamic custom widths for all active skills to prevent text overflow
-  allSkills.forEach(s => {
-    const titleW = estimateTextWidth(s.label, 'title');
-    const subW = s.sub ? estimateTextWidth(s.sub, 'sub') : 0;
-    // Add dynamic layout padding around the wider text element
-    s.boxW = Math.max(titleW, subW) + 28; 
-    s.boxH = s.sub ? 42 : 32; // Taller badge if there is a subtitle
-    
-    // Assign structural default layout safety positions if not caught by system cache
-    if (s.x === undefined || s.x === null) s.x = 220 + (Math.random() - 0.5) * 60;
-    if (s.y === undefined || s.y === null) s.y = 220 + (Math.random() - 0.5) * 60;
-  });
-
-  // Render Connections Line pathways first (so badges display neatly on top)
-  allConnections.forEach(c => {
-    const f = allSkills.find(s => (s.id === c.from || s.key === c.from));
-    const t = allSkills.find(s => (s.id === c.to || s.key === c.to));
+  CONNECTIONS.forEach(c => {
+    const f = SKILLS.find(s => s.id === c.from), t = SKILLS.find(s => s.id === c.to);
     if (!f || !t) return;
-    
     const line = document.createElementNS('http://www.w3.org/2000/svg','line');
-    line.setAttribute('x1', f.x); line.setAttribute('y1', f.y);
-    line.setAttribute('x2', t.x); line.setAttribute('y2', t.y);
+    line.setAttribute('x1',f.cx); line.setAttribute('y1',f.cy);
+    line.setAttribute('x2',t.cx); line.setAttribute('y2',t.cy);
+    line.setAttribute('stroke','#1e1e1e'); line.setAttribute('stroke-width','1');
     line.dataset.from = c.from; line.dataset.to = c.to;
-    line.setAttribute('class', 'conn-line');
+    line.classList.add('conn-line'); line.style.transition = 'all 0.25s';
     svg.appendChild(line);
-
-    const dot = document.createElementNS('http://www.w3.org/2000/svg','circle');
-    dot.setAttribute('cx', (f.x + t.x) / 2);
-    dot.setAttribute('cy', (f.y + t.y) / 2);
-    dot.setAttribute('r', 3);
-    dot.setAttribute('class', 'link-dot');
-    svg.appendChild(dot);
   });
-  
-  // Render Badges
-  allSkills.forEach(s => {
-    const sid = s.id || s.key;
+  const cg = document.createElementNS('http://www.w3.org/2000/svg','g');
+  const cc = document.createElementNS('http://www.w3.org/2000/svg','circle');
+  cc.setAttribute('cx',220); cc.setAttribute('cy',220); cc.setAttribute('r',42);
+  cc.setAttribute('fill','#141414'); cc.setAttribute('stroke','#E8C547'); cc.setAttribute('stroke-width','1.5');
+  const mkT = (y, txt) => {
+    const el = document.createElementNS('http://www.w3.org/2000/svg','text');
+    el.setAttribute('x',220); el.setAttribute('y',y); el.setAttribute('text-anchor','middle');
+    el.setAttribute('fill','#E8C547'); el.setAttribute('font-size','12');
+    el.setAttribute('font-family','Playfair Display,serif'); el.textContent = txt;
+    return el;
+  };
+  cg.appendChild(cc); cg.appendChild(mkT(214,'BUILD')); cg.appendChild(mkT(230,'ANYWAY'));
+  svg.appendChild(cg);
+  SKILLS.forEach(s => {
     const g = document.createElementNS('http://www.w3.org/2000/svg','g');
-    g.setAttribute('class', 'skill-node');
-    g.dataset.id = sid; g.style.cursor = 'grab'; g.style.transition = 'opacity 0.2s';
-    
-    const rect = document.createElementNS('http://www.w3.org/2000/svg','rect');
-    rect.setAttribute('x', s.x - s.boxW / 2);
-    rect.setAttribute('y', s.y - s.boxH / 2);
-    rect.setAttribute('width', s.boxW);
-    rect.setAttribute('height', s.boxH);
-    rect.setAttribute('class', 'node-rect');
-    
+    g.classList.add('skill-node'); g.dataset.id = s.id; g.style.cursor = 'pointer';
+    const circle = document.createElementNS('http://www.w3.org/2000/svg','circle');
+    circle.setAttribute('cx',s.cx); circle.setAttribute('cy',s.cy); circle.setAttribute('r',42);
+    circle.setAttribute('fill','#141414'); circle.setAttribute('stroke','#2a2a2a');
+    circle.setAttribute('stroke-width','1.5'); circle.style.transition = 'all 0.25s';
     const t1 = document.createElementNS('http://www.w3.org/2000/svg','text');
-    t1.setAttribute('x', s.x);
-    t1.setAttribute('y', s.sub ? s.y - 2 : s.y + 4);
-    t1.setAttribute('class', 'node-title');
-    t1.textContent = s.label;
-    
-    g.appendChild(rect);
-    g.appendChild(t1);
-
-    if (s.sub) {
-      const t2 = document.createElementNS('http://www.w3.org/2000/svg','text');
-      t2.setAttribute('x', s.x);
-      t2.setAttribute('y', s.y + 11);
-      t2.setAttribute('class', 'node-sub');
-      t2.textContent = s.sub;
-      g.appendChild(t2);
-    }
-    
-    // Wire up safe click/arrange dragging events
-    g.addEventListener('mousedown', (e) => handleNodeDragStart(e, s));
-    g.addEventListener('touchstart', (e) => handleNodeDragStart(e, s), { passive: false });
-    
-    g.addEventListener('click', (e) => {
-      // Prevent highlighting paths accidentally when dragging nodes around
-      if (g.dataset.dragged === 'true') {
-        g.removeAttribute('data-dragged');
-        return;
-      }
-      toggleSkill(sid);
-    });
-    
-    g.addEventListener('dblclick', (e) => {
-      e.stopPropagation();
-      openEditSkillModal(sid, s.label, s.sub || '');
-    });
-    
+    t1.setAttribute('x',s.cx); t1.setAttribute('y',s.cy - 5);
+    t1.setAttribute('text-anchor','middle'); t1.setAttribute('fill','#d0cbc0');
+    t1.setAttribute('font-size','13'); t1.setAttribute('font-family','Playfair Display,serif');
+    t1.setAttribute('font-weight','700'); t1.textContent = s.label;
+    const t2 = document.createElementNS('http://www.w3.org/2000/svg','text');
+    t2.setAttribute('x',s.cx); t2.setAttribute('y',s.cy + 12);
+    t2.setAttribute('text-anchor','middle'); t2.setAttribute('fill','#555');
+    t2.setAttribute('font-size','10'); t2.setAttribute('font-family','Lora,serif');
+    t2.textContent = s.sub;
+    g.appendChild(circle); g.appendChild(t1); g.appendChild(t2);
+    g.addEventListener('click', () => toggleSkill(s.id));
     svg.appendChild(g);
-  });
-}
-
-// Drag & Drop Layout Manipulation Engine Handlers
-function handleNodeDragStart(e, node) {
-  draggedNode = node;
-  const clientX = e.touches ? e.touches[0].clientX : e.clientX;
-  const clientY = e.touches ? e.touches[0].clientY : e.clientY;
-  
-  const svg = document.getElementById('skillMap');
-  const rect = svg.getBoundingClientRect();
-  
-  const currentMouseX = clientX - rect.left;
-  const currentMouseY = clientY - rect.top;
-  
-  dragOffsetX = currentMouseX - node.x;
-  dragOffsetY = currentMouseY - node.y;
-  
-  const el = svg.querySelector(`g[data-id="${node.id || node.key}"]`);
-  if (el) el.style.cursor = 'grabbing';
-  
-  if(e.cancelable) e.preventDefault();
-}
-
-function handleMapMouseMove(e) {
-  if (!draggedNode) return;
-  
-  const clientX = e.touches ? e.touches[0].clientX : e.clientX;
-  const clientY = e.touches ? e.touches[0].clientY : e.clientY;
-  
-  const svg = document.getElementById('skillMap');
-  const rect = svg.getBoundingClientRect();
-  
-  let newX = clientX - rect.left - dragOffsetX;
-  let newY = clientY - rect.top - dragOffsetY;
-  
-  // Stay bound safely inside map viewport limits
-  newX = Math.max(draggedNode.boxW / 2 + 10, Math.min(rect.width - draggedNode.boxW / 2 - 10, newX));
-  newY = Math.max(draggedNode.boxH / 2 + 10, Math.min(rect.height - draggedNode.boxH / 2 - 10, newY));
-  
-  draggedNode.x = newX;
-  draggedNode.y = newY;
-  
-  const nodeEl = svg.querySelector(`g[data-id="${draggedNode.id || draggedNode.key}"]`);
-  if (nodeEl) nodeEl.setAttribute('data-dragged', 'true');
-  
-  // Re-link updates live during runtime arrangements
-  updateLivePositions();
-}
-
-function handleMapMouseUp() {
-  if (!draggedNode) return;
-  const svg = document.getElementById('skillMap');
-  const el = svg.querySelector(`g[data-id="${draggedNode.id || draggedNode.key}"]`);
-  if (el) el.style.cursor = 'grab';
-  
-  // Save position adjustments immediately inside structural application state cache
-  localStorage.setItem('msilas-skills', JSON.stringify(allSkills));
-  draggedNode = null;
-}
-
-// Live link layout redraw engine updates lines during drag interactions
-function updateLivePositions() {
-  const svg = document.getElementById('skillMap');
-  
-  allSkills.forEach(s => {
-    const nodeEl = svg.querySelector(`g[data-id="${s.id || s.key}"]`);
-    if (!nodeEl) return;
-    
-    const rect = nodeEl.querySelector('.node-rect');
-    rect.setAttribute('x', s.x - s.boxW / 2);
-    rect.setAttribute('y', s.y - s.boxH / 2);
-    
-    const texts = nodeEl.querySelectorAll('text');
-    if(texts[0]) {
-      texts[0].setAttribute('x', s.x);
-      texts[0].setAttribute('y', s.sub ? s.y - 2 : s.y + 4);
-    }
-    if(texts[1]) {
-      texts[1].setAttribute('x', s.x);
-      texts[1].setAttribute('y', s.y + 11);
-    }
-  });
-
-  const lines = svg.querySelectorAll('.conn-line');
-  lines.forEach(line => {
-    const f = allSkills.find(s => (s.id === line.dataset.from || s.key === line.dataset.from));
-    const t = allSkills.find(s => (s.id === line.dataset.to || s.key === line.dataset.to));
-    if (f && t) {
-      line.setAttribute('x1', f.x); line.setAttribute('y1', f.y);
-      line.setAttribute('x2', t.x); line.setAttribute('y2', t.y);
-    }
-  });
-
-  const dots = svg.querySelectorAll('.link-dot');
-  let idx = 0;
-  allConnections.forEach(c => {
-    const f = allSkills.find(s => (s.id === c.from || s.key === c.from));
-    const t = allSkills.find(s => (s.id === c.to || s.key === c.to));
-    if (f && t && dots[idx]) {
-      dots[idx].setAttribute('cx', (f.x + t.x) / 2);
-      dots[idx].setAttribute('cy', (f.y + t.y) / 2);
-      idx++;
-    }
   });
 }
 
@@ -872,168 +854,276 @@ function toggleSkill(id) {
   activeSkill = activeSkill === id ? null : id;
   document.querySelectorAll('.conn-line').forEach(line => {
     const active = activeSkill && (line.dataset.from === activeSkill || line.dataset.to === activeSkill);
-    line.setAttribute('stroke', active ? '#E8C547' : '#222');
-    line.setAttribute('stroke-width', active ? '2.5' : '1.5');
-    line.style.opacity = (activeSkill && !active) ? '0.05' : '1';
+    line.setAttribute('stroke', active ? '#E8C547' : '#1e1e1e');
+    line.setAttribute('stroke-width', active ? '2' : '0.8');
+    line.style.opacity = (activeSkill && !active) ? '0.04' : '1';
   });
-
-  document.querySelectorAll('.link-dot').forEach(dot => {
-    dot.style.opacity = activeSkill ? '0' : '1';
-  });
-
   document.querySelectorAll('.skill-node').forEach(g => {
     const sid = g.dataset.id;
     const isActive = activeSkill === sid;
-    const connected = activeSkill && allConnections.some(c => (c.from === activeSkill && c.to === sid) || (c.to === activeSkill && c.from === sid));
+    const connected = activeSkill && CONNECTIONS.some(c => (c.from === activeSkill && c.to === sid) || (c.to === activeSkill && c.from === sid));
     const inactive = activeSkill && !isActive && !connected;
-    
-    const rect = g.querySelector('.node-rect');
-    rect.setAttribute('fill', isActive ? '#E8C547' : connected ? '#1e1a08' : '#141414');
-    rect.setAttribute('stroke', (isActive || connected) ? '#E8C547' : '#2a2a2a');
-    
-    g.querySelector('.node-title').setAttribute('fill', isActive ? '#0c0c0c' : '#d0cbc0');
+    g.querySelector('circle').setAttribute('fill', isActive ? '#E8C547' : connected ? '#1e1a08' : '#141414');
+    g.querySelector('circle').setAttribute('stroke', (isActive || connected) ? '#E8C547' : '#2a2a2a');
+    g.querySelectorAll('text')[0].setAttribute('fill', isActive ? '#0c0c0c' : '#d0cbc0');
     g.style.opacity = inactive ? '0.15' : '1';
   });
-  
   const el = document.getElementById('connectionInfo');
   if (!activeSkill) { el.innerHTML = '<div class="map-tagline">Every skill serves the same mission.</div>'; return; }
-  
-  const skill = allSkills.find(s => (s.id === activeSkill || s.key === activeSkill));
-  const conns = allConnections.filter(c => c.from === activeSkill || c.to === activeSkill);
-  
+  const skill = SKILLS.find(s => s.id === activeSkill);
+  const conns = CONNECTIONS.filter(c => c.from === activeSkill || c.to === activeSkill);
   el.innerHTML = `<div class="conn-info">
     <div class="conn-title">${skill.label} connects to:</div>
     ${conns.map(c => {
       const oid = c.from === activeSkill ? c.to : c.from;
-      const other = allSkills.find(s => (s.id === oid || s.key === oid));
+      const other = SKILLS.find(s => s.id === oid);
       return `<div class="conn-item"><div class="conn-dot"></div>
         <div><span class="conn-other">${other ? other.label : oid}</span><span class="conn-lbl"> — ${c.label}</span></div></div>`;
     }).join('')}
-    <button class="clear-btn" onclick="toggleSkill('${activeSkill}')">Clear Track</button>
+    <button class="clear-btn" onclick="toggleSkill('${activeSkill}')">Clear</button>
   </div>`;
 }
+
+// ── RENDER AND SORT SKILLS (DRAG AND DROP) ──────────────────
+function renderSkillList() {
+  const list = document.getElementById('skillList');
+  if (!list) return;
+  list.innerHTML = '';
+  
+  SKILLS.forEach((s, i) => {
+    const sid = s.id || s.key;
+    const div = document.createElement('div');
+    div.className = 'skill-list-item';
+    div.setAttribute('draggable', 'true');
+    div.dataset.index = i;
+
+    div.innerHTML = `
+      <div style="flex:1;">
+        <div class="skill-list-name">${s.label}</div>
+        <div class="skill-list-sub">${s.sub || ''}</div>
+      </div>`;
+      
+    const btn = document.createElement('button');
+    btn.className = 'icon-btn';
+    btn.textContent = '✎';
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation(); // Stop click handling triggering selections or drag bugs
+      openEditSkillModal(sid, s.label, s.sub || '');
+    });
+    
+    div.appendChild(btn);
+
+    // DRAG EVENTS FOR SKILLS
+    div.addEventListener('dragstart', (event) => {
+      div.classList.add('dragging');
+      event.dataTransfer.setData('text/plain', i);
+    });
+
+    div.addEventListener('dragend', () => {
+      div.classList.remove('dragging');
+    });
+
+    list.appendChild(div);
+  });
+}
+
+// Add Dragover container setup for target calculation strictly on skillList
+document.getElementById('skillList').addEventListener('dragover', (e) => {
+  e.preventDefault();
+  const list = document.getElementById('skillList');
+  const draggingItem = list.querySelector('.dragging');
+  if (!draggingItem) return;
+
+  const siblings = [...list.querySelectorAll('.skill-list-item:not(.dragging)')];
+  const nextSibling = siblings.find(sibling => {
+    const box = sibling.getBoundingClientRect();
+    return e.clientY <= box.top + box.height / 2;
+  });
+
+  if (nextSibling) {
+    list.insertBefore(draggingItem, nextSibling);
+  } else {
+    list.appendChild(draggingItem);
+  }
+});
+
+document.getElementById('skillList').addEventListener('drop', async (e) => {
+  e.preventDefault();
+  const list = document.getElementById('skillList');
+  const fromIndex = parseInt(e.dataTransfer.getData('text/plain'), 10);
+  if (isNaN(fromIndex)) return;
+
+  const currentDomItems = [...list.querySelectorAll('.skill-list-item')];
+  const toIndex = currentDomItems.findIndex(item => parseInt(item.dataset.index, 10) === fromIndex);
+
+  if (fromIndex !== toIndex && fromIndex >= 0 && toIndex >= 0) {
+    // Reorder our target global data array
+    const [movedSkill] = SKILLS.splice(fromIndex, 1);
+    SKILLS.splice(toIndex, 0, movedSkill);
+
+    // Rerender layout
+    renderSkillList();
+
+    // Re-draw the SVG map layout nodes to reflect structural connections safely
+    const svg = document.getElementById('skillMap');
+    while (svg.firstChild) svg.removeChild(svg.firstChild);
+    buildMap();
+    toggleSkill(null);
+  }
+});
 
 function openEditSkillModal(id, label, sub) {
   editingSkillId = id;
   document.getElementById('editSkillName').value = label;
   document.getElementById('editSkillSub').value = sub;
-  
-  const picker = document.getElementById('editSkillConnectionPicker');
-  picker.innerHTML = allSkills
-    .filter(s => (s.id || s.key) !== id)
-    .map(s => {
-      const sid = s.id || s.key;
-      const existingConn = allConnections.find(c => 
-        (c.from === id && c.to === sid) || (c.to === id && c.from === sid)
-      );
-      const isChecked = existingConn ? 'checked' : '';
-      const showDesc = existingConn ? 'show' : '';
-      const descVal = existingConn ? existingConn.label : '';
-
-      return `<div class="skill-conn-item">
-        <input type="checkbox" class="skill-conn-check" id="edit_conn_${sid}" value="${sid}" ${isChecked} onchange="toggleConnDesc(this)">
-        <div style="flex:1;">
-          <label class="skill-conn-label" for="edit_conn_${sid}">${s.label}</label>
-          <input type="text" class="skill-conn-desc ${showDesc}" id="desc_${sid}" value="${descVal}" placeholder="How do they connect?">
-        </div>
-      </div>`;
-    }).join('');
-
   openModal('editSkillModal');
   setTimeout(() => document.getElementById('editSkillName').focus(), 100);
 }
 
-function updateSkill() {
+async function updateSkill() {
   const label = document.getElementById('editSkillName').value.trim();
   const sub = document.getElementById('editSkillSub').value.trim();
   if (!label || !editingSkillId) return;
-  
-  allSkills = allSkills.map(s => (s.id === editingSkillId || s.key === editingSkillId) ? { ...s, label, sub } : s);
-  localStorage.setItem('msilas-skills', JSON.stringify(allSkills));
-  
-  allConnections = allConnections.filter(c => c.from !== editingSkillId && c.to !== editingSkillId);
-
-  document.querySelectorAll('#editSkillConnectionPicker .skill-conn-check:checked').forEach(cb => {
-    const toId = cb.value;
-    const container = cb.closest('.skill-conn-item');
-    const lbl = container.querySelector('.skill-conn-desc').value.trim() || `${label} meets ${toId}`;
-    allConnections.push({ from: editingSkillId, to: toId, label: lbl });
-  });
-  localStorage.setItem('msilas-connections', JSON.stringify(allConnections));
-  
   closeModal('editSkillModal');
-  editingSkillId = null;
+  setSyncing();
+  try {
+    const { error } = await sb.from('skills')
+      .update({ label, sub })
+      .eq('id', editingSkillId)
+      .eq('user_id', USER_ID);
+    if (error) throw error;
+    setSynced();
+  } catch(e) {
+    allSkills = allSkills.map(s => (s.id === editingSkillId || s.key === editingSkillId) ? { ...s, label, sub } : s);
+    setError();
+  }
+  const idx = SKILLS.findIndex(s => s.id === editingSkillId || s.key === editingSkillId);
+  if (idx >= 0) { SKILLS[idx].label = label; SKILLS[idx].sub = sub; }
+  const fresh = await loadSkills();
+  if (fresh) allSkills = fresh;
+  renderSkillList();
+  const svg = document.getElementById('skillMap');
+  while (svg.firstChild) svg.removeChild(svg.firstChild);
   buildMap();
   toggleSkill(null);
+  editingSkillId = null;
 }
 
-function deleteCurrentSkill() {
-  if (!editingSkillId) return;
-  if (!confirm("Are you sure you want to completely delete this skill and all its connection links?")) return;
-
-  allSkills = allSkills.filter(s => (s.id !== editingSkillId && s.key !== editingSkillId));
-  localStorage.setItem('msilas-skills', JSON.stringify(allSkills));
-
-  allConnections = allConnections.filter(c => c.from !== editingSkillId && c.to !== editingSkillId);
-  localStorage.setItem('msilas-connections', JSON.stringify(allConnections));
-
-  closeModal('editSkillModal');
-  editingSkillId = null;
-  buildMap();
-  toggleSkill(null);
+function getCategoryIcon(cat) {
+  const all = allHabits();
+  return all[cat] ? all[cat].icon : '⚡';
 }
 
 function openAddSkillModal() {
   document.getElementById('skillName').value = '';
   document.getElementById('skillSub').value = '';
   const picker = document.getElementById('skillConnectionPicker');
-  picker.innerHTML = allSkills.map(s => {
+  const src = SKILLS;
+  picker.innerHTML = src.map(s => {
     const sid = s.id || s.key;
-    return `<div class="skill-conn-item">
-      <input type="checkbox" class="skill-conn-check" id="add_conn_${sid}" value="${sid}" onchange="toggleConnDesc(this)">
-      <div style="flex:1;"><label class="skill-conn-label" for="add_conn_${sid}">${s.label}</label>
-      <input type="text" class="skill-conn-desc" id="desc_${sid}" placeholder="How do they connect?"></div></div>`;
+    return '<div class="skill-conn-item">' +
+      '<input type="checkbox" class="skill-conn-check" id="conn_' + sid + '" value="' + sid + '" onchange="toggleConnDesc(this)">' +
+      '<div style="flex:1;"><label class="skill-conn-label" for="conn_' + sid + '">' + s.label + '</label>' +
+      '<input type="text" class="skill-conn-desc" id="desc_' + sid + '" placeholder="How do they connect?"></div></div>';
   }).join('');
   openModal('addSkillModal');
   setTimeout(() => document.getElementById('skillName').focus(), 100);
 }
 
 function toggleConnDesc(cb) {
-  const container = cb.closest('.skill-conn-item');
-  const d = container.querySelector('.skill-conn-desc');
+  const d = document.getElementById('desc_' + cb.value);
   if (d) d.classList.toggle('show', cb.checked);
 }
 
-function saveSkill() {
+async function saveSkill() {
   const label = document.getElementById('skillName').value.trim();
   const sub = document.getElementById('skillSub').value.trim();
   if (!label) { document.getElementById('skillName').focus(); return; }
-  
   const key = 'skill_' + Date.now();
-  
-  allSkills.push({ id: key, key, label, sub, x: 220, y: 220 });
-  localStorage.setItem('msilas-skills', JSON.stringify(allSkills));
-
-  document.querySelectorAll('#skillConnectionPicker .skill-conn-check:checked').forEach(cb => {
-    const toId = cb.value;
-    const container = cb.closest('.skill-conn-item');
-    const lbl = container.querySelector('.skill-conn-desc').value.trim() || `${label} meets ${toId}`;
-    allConnections.push({ from: key, to: toId, label: lbl });
-  });
-  localStorage.setItem('msilas-connections', JSON.stringify(allConnections));
-
   closeModal('addSkillModal');
-  buildMap();
+  let newId = key;
+  
+  // Create default fallback coordinates close to center for programmatic additions
+  const newSkillObj = { id: key, key, label, sub, cx: 220, cy: 150 };
+  SKILLS.push(newSkillObj);
+
+  try {
+    setSyncing();
+    const { data, error } = await sb.from('skills').insert({ user_id: USER_ID, key, label, sub }).select('id').single();
+    if (error) throw error;
+    newId = data.id;
+    setSynced();
+  } catch(e) {
+    const local = JSON.parse(localStorage.getItem('msilas-local-skills') || '[]');
+    local.push(newSkillObj);
+    localStorage.setItem('msilas-local-skills', JSON.stringify(local));
+    setError();
+  }
+  for (const cb of document.querySelectorAll('.skill-conn-check:checked')) {
+    const toId = cb.value;
+    const lbl = (document.getElementById('desc_' + toId)||{}).value || (label + ' meets ' + toId);
+    CONNECTIONS.push({ from: key, to: toId, label: lbl.trim() });
+    try { await sb.from('skill_connections').insert({ user_id: USER_ID, from_skill: newId, to_skill: toId, label: lbl.trim() }); } catch {}
+  }
+  const fresh = await loadSkills();
+  if (fresh) allSkills = fresh;
+  
+  renderSkillList();
+  const svg = document.getElementById('skillMap');
+  while (svg.firstChild) svg.removeChild(svg.firstChild);
+  buildMap(); 
   toggleSkill(null);
 }
 
+async function loadSkills() {
+  try {
+    const { data, error } = await sb.from('skills').select('*').eq('user_id', USER_ID);
+    if (error) throw error;
+    return data && data.length > 0 ? data : null;
+  } catch { return null; }
+}
+
+async function saveProjectOffline(proj) {
+  const local = JSON.parse(localStorage.getItem('msilas-offline-projects') || '[]');
+  const entry = { ...proj, id: 'offline_' + Date.now(), created_at: new Date().toISOString() };
+  local.push(entry); localStorage.setItem('msilas-offline-projects', JSON.stringify(local));
+  allProjects = [...allProjects, entry]; renderProjects();
+  setSyncStatus('error', 'Saved offline');
+}
+
+async function loadProjectDayCounts() {
+  try {
+    const { data, error } = await sb.from('project_logs').select('project_id,date').eq('user_id', USER_ID);
+    if (error) throw error;
+    const c = {}; data.forEach(r => { c[r.project_id] = (c[r.project_id]||0)+1; }); return c;
+  } catch { return {}; }
+}
+
 // ── Init ──────────────────────────────────────
-function init() {
+async function init() {
+  showLoading();
   buildMap();
   toggleSkill(null);
+  try {
+    const [logs, cats, projs, dbSkills] = await Promise.all([loadLogs(), loadCats(), loadProjs(), loadSkills()]);
+    allLogs = logs;
+    allProjects = projs;
+    if (dbSkills && dbSkills.length > 0) {
+      allSkills = dbSkills;
+      // Merge unique attributes coordinates into basic setup if present
+    }
+    cacheSet('msilas-cats', cats);
+    setSynced();
+  } catch {
+    allLogs = cacheGet('msilas-logs', {});
+    allProjects = cacheGet('msilas-projs', []);
+    setError();
+  }
   populateSelects();
   renderAll();
   renderProjects();
+  renderSkillList();
+  hideLoading();
 }
 
 init();
