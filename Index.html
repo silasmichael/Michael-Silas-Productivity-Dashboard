@@ -91,7 +91,7 @@
   .add-proj-btn:hover { color:var(--gold); border-color:var(--gold); }
 
   /* SKILLS MAP */
-  #skillMap { width:100%; height:440px; background:#080808; border:1px solid var(--border); border-radius:12px; display:block; overflow:hidden; }
+  #skillMap { width:100%; height:460px; background:#080808; border:1px solid var(--border); border-radius:12px; display:block; overflow:hidden; user-select:none; }
   .map-hint { font-size:11px; color:#444; text-align:center; margin-bottom:10px; font-style:italic; }
   .conn-info { margin-top:12px; background:var(--bg2); border:1px solid var(--border); border-left:3px solid var(--gold); border-radius:8px; padding:14px; }
   .conn-title { font-family:'Playfair Display',serif; font-size:14px; color:var(--gold); margin-bottom:10px; }
@@ -137,19 +137,24 @@
   .skill-conn-desc:focus { border-color:var(--gold); }
   
   /* SVG MIND MAP BADGE STYLING */
-  .node-rect { fill:#141414; stroke:#2a2a2a; stroke-width:1.5; rx:14; ry:14; transition: fill 0.2s, stroke 0.2s; }
+  .node-rect { fill:#141414; stroke:#2a2a2a; stroke-width:1.5; rx:8; ry:8; transition: fill 0.2s, stroke 0.2s; }
   .skill-node:hover .node-rect { stroke:#555; }
-  .node-title { fill:#d0cbc0; font-size:12px; font-family:'Playfair Display',serif; font-weight:700; text-anchor:middle; pointer-events:none; }
-  .node-sub { fill:#555; font-size:9px; font-family:'Lora',serif; text-anchor:middle; pointer-events:none; }
+  .node-title { fill:#d0cbc0; font-size:13px; font-family:'Playfair Display',serif; font-weight:700; text-anchor:middle; pointer-events:none; }
+  .node-sub { fill:#666; font-size:9.5px; font-family:'Lora',serif; text-anchor:middle; pointer-events:none; }
   .conn-line { stroke:#222; stroke-width:1.5; transition: stroke 0.2s, stroke-width 0.2s; }
   .link-dot { fill:#333; transition: fill 0.2s; }
+  
+  /* Helper to estimate layout dimensions safely before building graphics */
+  #textMeasureHelper { position:absolute; visibility:hidden; height:auto; width:auto; white-space:nowrap; }
 </style>
 </head>
 <body>
 
+<div id="textMeasureHelper"></div>
+
 <div class="sync-badge">
   <div class="sync-dot"></div>
-  <span>Mind Map Cache Enabled</span>
+  <span>Mind Map Custom Layout Enabled</span>
 </div>
 
 <!-- EDIT ENTRY MODAL -->
@@ -261,7 +266,7 @@
         <div class="section-label" style="flex:1;margin-bottom:0;">Skills Mind Map</div>
         <button class="add-cat-btn" style="margin-bottom:14px;" onclick="openAddSkillModal()">+ Skill</button>
       </div>
-      <div class="map-hint">Click to see connection tracks • Double-tap/click to edit or delete</div>
+      <div class="map-hint">Drag badges to arrange them • Click to trace pathways • Double-tap to edit/delete</div>
       <svg id="skillMap"></svg>
       <div id="connectionInfo"></div>
 
@@ -313,14 +318,14 @@ const HABITS_DEFAULT = {
 };
 
 const SKILLS_DEFAULT = [
-  { id:"writing",   label:"Writing",    sub:"Poetry & Books" },
-  { id:"animation", label:"Animation",  sub:"Callipeg" },
-  { id:"drawing",   label:"Drawing",    sub:"Procreate" },
-  { id:"design",    label:"Design",     sub:"Graphic & Covers" },
-  { id:"community", label:"Community",  sub:"Book Hangout" },
-  { id:"faith",     label:"Faith",      sub:"Biblical Study" },
-  { id:"coding",    label:"Coding",     sub:"Web & Apps" },
-  { id:"reading",   label:"Reading",    sub:"Knowledge" },
+  { id:"writing",   label:"Writing",    sub:"Poetry & Books",     x: 220, y: 70 },
+  { id:"animation", label:"Animation",  sub:"Callipeg App",       x: 90,  y: 160 },
+  { id:"drawing",   label:"Drawing",    sub:"Procreate Engine",   x: 90,  y: 300 },
+  { id:"design",    label:"Design",     sub:"Graphic & Covers",   x: 220, y: 390 },
+  { id:"community", label:"Community",  sub:"Book Hangout Core",  x: 350, y: 300 },
+  { id:"faith",     label:"Faith",      sub:"Biblical Study",     x: 350, y: 160 },
+  { id:"coding",    label:"Coding",     sub:"Web Architecture",   x: 220, y: 230 },
+  { id:"reading",   label:"Reading",    sub:"Resource Engine",    x: 70,  y: 40 },
 ];
 
 const CONNECTIONS_DEFAULT = [
@@ -346,6 +351,11 @@ let editingEntryIndex = -1;
 let editingProject = null;
 let activeSkill = null;
 
+// Dragging Mechanics States
+let draggedNode = null;
+let dragOffsetX = 0;
+let dragOffsetY = 0;
+
 // Application engine states loaded directly from client storage array
 let allLogs = JSON.parse(localStorage.getItem('msilas-logs') || '{}');
 let customCats = JSON.parse(localStorage.getItem('msilas-cats') || '{}');
@@ -356,64 +366,6 @@ let projectLogs = JSON.parse(localStorage.getItem('msilas-project-logs') || '[]'
 
 if (allSkills.length === 0) { allSkills = [...SKILLS_DEFAULT]; localStorage.setItem('msilas-skills', JSON.stringify(allSkills)); }
 if (allConnections.length === 0) { allConnections = [...CONNECTIONS_DEFAULT]; localStorage.setItem('msilas-connections', JSON.stringify(allConnections)); }
-
-// Simple Force Simulation Core for Mind Map Formatting
-function runForceLayout() {
-  const width = 440, height = 440;
-  
-  // Assign positions if they do not exist yet
-  allSkills.forEach((s, idx) => {
-    if (s.x === undefined || s.y === undefined) {
-      s.x = width / 2 + (Math.random() - 0.5) * 100;
-      s.y = height / 2 + (Math.random() - 0.5) * 100;
-    }
-  });
-
-  // Run a small structural physics step to distribute elements legibly
-  for (let step = 0; step < 80; step++) {
-    // 1. Repel force between node blocks
-    for (let i = 0; i < allSkills.length; i++) {
-      for (let j = i + 1; j < allSkills.length; j++) {
-        let dx = allSkills[j].x - allSkills[i].x;
-        let dy = allSkills[j].y - allSkills[i].y;
-        if (dx === 0) dx = 0.1; 
-        let dist = Math.sqrt(dx * dx + dy * dy);
-        let minDist = 95; // Ensure labels clear each other completely
-        if (dist < minDist) {
-          let force = (minDist - dist) / dist * 0.45;
-          let fx = dx * force;
-          let fy = dy * force;
-          allSkills[i].x -= fx; allSkills[i].y -= fy;
-          allSkills[j].x += fx; allSkills[j].y += fy;
-        }
-      }
-    }
-
-    // 2. Link attraction forces
-    allConnections.forEach(c => {
-      let f = allSkills.find(s => (s.id === c.from || s.key === c.from));
-      let t = allSkills.find(s => (s.id === c.to || s.key === c.to));
-      if (!f || !t) return;
-      let dx = t.x - f.x;
-      let dy = t.y - f.y;
-      let dist = Math.sqrt(dx * dx + dy * dy);
-      let targetLen = 130;
-      if (dist > 0) {
-        let force = (dist - targetLen) / dist * 0.06;
-        let fx = dx * force;
-        let fy = dy * force;
-        f.x += fx; f.y += fy;
-        t.x -= fx; t.y -= fy;
-      }
-    });
-
-    // 3. Center gravity push back
-    allSkills.forEach(s => {
-      s.x += (width / 2 - s.x) * 0.03;
-      s.y += (height / 2 - s.y) * 0.03;
-    });
-  }
-}
 
 function allHabits() { return Object.assign({}, HABITS_DEFAULT, customCats); }
 function todayKey() { return new Date().toISOString().split('T')[0]; }
@@ -434,6 +386,22 @@ function calcStreak(logs) {
     else if (i > 0) break;
   }
   return n;
+}
+
+// Estimates text width dynamically using a hidden container to accurately size boxes
+function estimateTextWidth(text, fontClass) {
+  const helper = document.getElementById('textMeasureHelper');
+  if (fontClass === 'title') {
+    helper.style.fontFamily = "'Playfair Display', serif";
+    helper.style.fontSize = "13px";
+    helper.style.fontWeight = "700";
+  } else {
+    helper.style.fontFamily = "'Lora', serif";
+    helper.style.fontSize = "9.5px";
+    helper.style.fontWeight = "400";
+  }
+  helper.textContent = text;
+  return helper.offsetWidth || 60;
 }
 
 function populateSelects() {
@@ -697,27 +665,43 @@ document.querySelectorAll('.modal-overlay').forEach(el => {
   el.addEventListener('click', function(e) { if (e.target === this) this.classList.remove('open'); });
 });
 
-// Re-engineered Dynamic Mind Map View Frame
+// ── Re-engineered Drag & Auto-Sizing Mind Map View ──
 function buildMap() {
-  runForceLayout();
   const svg = document.getElementById('skillMap');
   svg.innerHTML = ''; 
   
-  // Render Link Pathways & Connection Dots
+  // Cleanly attach core workspace movement handlers for dragging
+  svg.removeEventListener('mousemove', handleMapMouseMove);
+  svg.removeEventListener('mouseup', handleMapMouseUp);
+  svg.addEventListener('mousemove', handleMapMouseMove);
+  svg.addEventListener('mouseup', handleMapMouseUp);
+  
+  // Pre-calculate dynamic custom widths for all active skills to prevent text overflow
+  allSkills.forEach(s => {
+    const titleW = estimateTextWidth(s.label, 'title');
+    const subW = s.sub ? estimateTextWidth(s.sub, 'sub') : 0;
+    // Add dynamic layout padding around the wider text element
+    s.boxW = Math.max(titleW, subW) + 28; 
+    s.boxH = s.sub ? 42 : 32; // Taller badge if there is a subtitle
+    
+    // Assign structural default layout safety positions if not caught by system cache
+    if (s.x === undefined || s.x === null) s.x = 220 + (Math.random() - 0.5) * 60;
+    if (s.y === undefined || s.y === null) s.y = 220 + (Math.random() - 0.5) * 60;
+  });
+
+  // Render Connections Line pathways first (so badges display neatly on top)
   allConnections.forEach(c => {
     const f = allSkills.find(s => (s.id === c.from || s.key === c.from));
     const t = allSkills.find(s => (s.id === c.to || s.key === c.to));
     if (!f || !t) return;
     
-    // Line path
     const line = document.createElementNS('http://www.w3.org/2000/svg','line');
     line.setAttribute('x1', f.x); line.setAttribute('y1', f.y);
     line.setAttribute('x2', t.x); line.setAttribute('y2', t.y);
     line.dataset.from = c.from; line.dataset.to = c.to;
-    line.className.add ? line.className.add('conn-line') : line.setAttribute('class', 'conn-line');
+    line.setAttribute('class', 'conn-line');
     svg.appendChild(line);
 
-    // Center linker indicator dot
     const dot = document.createElementNS('http://www.w3.org/2000/svg','circle');
     dot.setAttribute('cx', (f.x + t.x) / 2);
     dot.setAttribute('cy', (f.y + t.y) / 2);
@@ -726,43 +710,161 @@ function buildMap() {
     svg.appendChild(dot);
   });
   
-  // Render Dynamic Rectangular Node Badges
+  // Render Badges
   allSkills.forEach(s => {
     const sid = s.id || s.key;
     const g = document.createElementNS('http://www.w3.org/2000/svg','g');
     g.setAttribute('class', 'skill-node');
-    g.dataset.id = sid; g.style.cursor = 'pointer'; g.style.transition = 'opacity 0.25s';
-    
-    // Dynamic text measurements mockup configuration
-    const boxW = 100;
-    const boxH = 40;
+    g.dataset.id = sid; g.style.cursor = 'grab'; g.style.transition = 'opacity 0.2s';
     
     const rect = document.createElementNS('http://www.w3.org/2000/svg','rect');
-    rect.setAttribute('x', s.x - boxW/2);
-    rect.setAttribute('y', s.y - boxH/2);
-    rect.setAttribute('width', boxW);
-    rect.setAttribute('height', boxH);
+    rect.setAttribute('x', s.x - s.boxW / 2);
+    rect.setAttribute('y', s.y - s.boxH / 2);
+    rect.setAttribute('width', s.boxW);
+    rect.setAttribute('height', s.boxH);
     rect.setAttribute('class', 'node-rect');
     
     const t1 = document.createElementNS('http://www.w3.org/2000/svg','text');
-    t1.setAttribute('x', s.x); t1.setAttribute('y', s.y - 2);
+    t1.setAttribute('x', s.x);
+    t1.setAttribute('y', s.sub ? s.y - 2 : s.y + 4);
     t1.setAttribute('class', 'node-title');
     t1.textContent = s.label;
     
-    const t2 = document.createElementNS('http://www.w3.org/2000/svg','text');
-    t2.setAttribute('x', s.x); t2.setAttribute('y', s.y + 11);
-    t2.setAttribute('class', 'node-sub');
-    t2.textContent = s.sub || '';
+    g.appendChild(rect);
+    g.appendChild(t1);
+
+    if (s.sub) {
+      const t2 = document.createElementNS('http://www.w3.org/2000/svg','text');
+      t2.setAttribute('x', s.x);
+      t2.setAttribute('y', s.y + 11);
+      t2.setAttribute('class', 'node-sub');
+      t2.textContent = s.sub;
+      g.appendChild(t2);
+    }
     
-    g.appendChild(rect); g.appendChild(t1); g.appendChild(t2);
+    // Wire up safe click/arrange dragging events
+    g.addEventListener('mousedown', (e) => handleNodeDragStart(e, s));
+    g.addEventListener('touchstart', (e) => handleNodeDragStart(e, s), { passive: false });
     
-    g.addEventListener('click', () => toggleSkill(sid));
+    g.addEventListener('click', (e) => {
+      // Prevent highlighting paths accidentally when dragging nodes around
+      if (g.dataset.dragged === 'true') {
+        g.removeAttribute('data-dragged');
+        return;
+      }
+      toggleSkill(sid);
+    });
+    
     g.addEventListener('dblclick', (e) => {
       e.stopPropagation();
       openEditSkillModal(sid, s.label, s.sub || '');
     });
     
     svg.appendChild(g);
+  });
+}
+
+// Drag & Drop Layout Manipulation Engine Handlers
+function handleNodeDragStart(e, node) {
+  draggedNode = node;
+  const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+  const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+  
+  const svg = document.getElementById('skillMap');
+  const rect = svg.getBoundingClientRect();
+  
+  const currentMouseX = clientX - rect.left;
+  const currentMouseY = clientY - rect.top;
+  
+  dragOffsetX = currentMouseX - node.x;
+  dragOffsetY = currentMouseY - node.y;
+  
+  const el = svg.querySelector(`g[data-id="${node.id || node.key}"]`);
+  if (el) el.style.cursor = 'grabbing';
+  
+  if(e.cancelable) e.preventDefault();
+}
+
+function handleMapMouseMove(e) {
+  if (!draggedNode) return;
+  
+  const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+  const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+  
+  const svg = document.getElementById('skillMap');
+  const rect = svg.getBoundingClientRect();
+  
+  let newX = clientX - rect.left - dragOffsetX;
+  let newY = clientY - rect.top - dragOffsetY;
+  
+  // Stay bound safely inside map viewport limits
+  newX = Math.max(draggedNode.boxW / 2 + 10, Math.min(rect.width - draggedNode.boxW / 2 - 10, newX));
+  newY = Math.max(draggedNode.boxH / 2 + 10, Math.min(rect.height - draggedNode.boxH / 2 - 10, newY));
+  
+  draggedNode.x = newX;
+  draggedNode.y = newY;
+  
+  const nodeEl = svg.querySelector(`g[data-id="${draggedNode.id || draggedNode.key}"]`);
+  if (nodeEl) nodeEl.setAttribute('data-dragged', 'true');
+  
+  // Re-link updates live during runtime arrangements
+  updateLivePositions();
+}
+
+function handleMapMouseUp() {
+  if (!draggedNode) return;
+  const svg = document.getElementById('skillMap');
+  const el = svg.querySelector(`g[data-id="${draggedNode.id || draggedNode.key}"]`);
+  if (el) el.style.cursor = 'grab';
+  
+  // Save position adjustments immediately inside structural application state cache
+  localStorage.setItem('msilas-skills', JSON.stringify(allSkills));
+  draggedNode = null;
+}
+
+// Live link layout redraw engine updates lines during drag interactions
+function updateLivePositions() {
+  const svg = document.getElementById('skillMap');
+  
+  allSkills.forEach(s => {
+    const nodeEl = svg.querySelector(`g[data-id="${s.id || s.key}"]`);
+    if (!nodeEl) return;
+    
+    const rect = nodeEl.querySelector('.node-rect');
+    rect.setAttribute('x', s.x - s.boxW / 2);
+    rect.setAttribute('y', s.y - s.boxH / 2);
+    
+    const texts = nodeEl.querySelectorAll('text');
+    if(texts[0]) {
+      texts[0].setAttribute('x', s.x);
+      texts[0].setAttribute('y', s.sub ? s.y - 2 : s.y + 4);
+    }
+    if(texts[1]) {
+      texts[1].setAttribute('x', s.x);
+      texts[1].setAttribute('y', s.y + 11);
+    }
+  });
+
+  const lines = svg.querySelectorAll('.conn-line');
+  lines.forEach(line => {
+    const f = allSkills.find(s => (s.id === line.dataset.from || s.key === line.dataset.from));
+    const t = allSkills.find(s => (s.id === line.dataset.to || s.key === line.dataset.to));
+    if (f && t) {
+      line.setAttribute('x1', f.x); line.setAttribute('y1', f.y);
+      line.setAttribute('x2', t.x); line.setAttribute('y2', t.y);
+    }
+  });
+
+  const dots = svg.querySelectorAll('.link-dot');
+  let idx = 0;
+  allConnections.forEach(c => {
+    const f = allSkills.find(s => (s.id === c.from || s.key === c.from));
+    const t = allSkills.find(s => (s.id === c.to || s.key === c.to));
+    if (f && t && dots[idx]) {
+      dots[idx].setAttribute('cx', (f.x + t.x) / 2);
+      dots[idx].setAttribute('cy', (f.y + t.y) / 2);
+      idx++;
+    }
   });
 }
 
@@ -869,11 +971,9 @@ function deleteCurrentSkill() {
   if (!editingSkillId) return;
   if (!confirm("Are you sure you want to completely delete this skill and all its connection links?")) return;
 
-  // Purge skill entry
   allSkills = allSkills.filter(s => (s.id !== editingSkillId && s.key !== editingSkillId));
   localStorage.setItem('msilas-skills', JSON.stringify(allSkills));
 
-  // Purge all associated lines inside connection lists
   allConnections = allConnections.filter(c => c.from !== editingSkillId && c.to !== editingSkillId);
   localStorage.setItem('msilas-connections', JSON.stringify(allConnections));
 
@@ -911,8 +1011,7 @@ function saveSkill() {
   
   const key = 'skill_' + Date.now();
   
-  // Placement handles dynamic layout positioning engine
-  allSkills.push({ id: key, key, label, sub });
+  allSkills.push({ id: key, key, label, sub, x: 220, y: 220 });
   localStorage.setItem('msilas-skills', JSON.stringify(allSkills));
 
   document.querySelectorAll('#skillConnectionPicker .skill-conn-check:checked').forEach(cb => {
