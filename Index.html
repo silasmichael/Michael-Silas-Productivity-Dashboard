@@ -133,11 +133,6 @@
   .skill-conn-desc { width:100%; background:var(--bg); border:1px solid var(--border); border-radius:4px; padding:5px 8px; color:var(--text); font-size:11px; font-family:'Lora',serif; outline:none; margin-top:4px; display:none; }
   .skill-conn-desc.show { display:block; }
   .skill-conn-desc:focus { border-color:var(--gold); }
-
-  .skill-list { margin-top:12px; }
-  .skill-list-item { display:flex; align-items:center; gap:10px; padding:10px 12px; background:var(--bg2); border:1px solid var(--border); border-radius:8px; margin-bottom:6px; }
-  .skill-list-name { font-family:'Playfair Display',serif; font-size:13px; color:var(--text); flex:1; }
-  .skill-list-sub { font-size:11px; color:var(--muted); }
 </style>
 </head>
 <body>
@@ -162,12 +157,14 @@
 </div>
 
 <div class="modal-overlay" id="editSkillModal">
-  <div class="modal">
+  <div class="modal" style="max-height: 85vh; overflow-y: auto;">
     <div class="modal-title">Edit Skill</div>
     <label class="modal-label">Skill name</label>
     <input type="text" class="modal-input" id="editSkillName" placeholder="Skill name">
     <label class="modal-label">Subtitle</label>
     <input type="text" class="modal-input" id="editSkillSub" placeholder="e.g. Callipeg, Procreate...">
+    <label class="modal-label">Modify Skill Connections</label>
+    <div id="editSkillConnectionPicker" style="background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:12px;margin-bottom:14px;max-height:180px;overflow-y:auto;"></div>
     <div class="modal-btns">
       <button class="modal-cancel" onclick="closeModal('editSkillModal')">Cancel</button>
       <button class="modal-save" onclick="updateSkill()">Save</button>
@@ -246,10 +243,9 @@
         <div class="section-label" style="flex:1;margin-bottom:0;">Skills Map</div>
         <button class="add-cat-btn" style="margin-bottom:14px;" onclick="openAddSkillModal()">+ Skill</button>
       </div>
-      <div class="map-hint">Tap a skill to see how it connects</div>
+      <div class="map-hint">Tap once to view highlights • Double-tap/click to edit skill data</div>
       <svg id="skillMap" viewBox="0 0 440 440"></svg>
       <div id="connectionInfo"></div>
-      <div class="skill-list" id="skillList"></div>
 
       <div class="section" style="margin-top:16px;">
         <div class="section-label">Current Projects</div>
@@ -439,7 +435,6 @@ function renderProjects() {
     return;
   }
   
-  // Calculate specific day counts from tracked category logs
   const counts = {};
   projectLogs.forEach(rl => { counts[rl.project_id] = (counts[rl.project_id] || 0) + 1; });
 
@@ -687,7 +682,16 @@ function buildMap() {
     t2.textContent = s.sub;
     
     g.appendChild(circle); g.appendChild(t1); g.appendChild(t2);
+    
+    // Single tap to toggle visibility/highlights
     g.addEventListener('click', () => toggleSkill(sid));
+    
+    // Double tap/click to edit
+    g.addEventListener('dblclick', (e) => {
+      e.stopPropagation();
+      openEditSkillModal(sid, s.label, s.sub || '');
+    });
+    
     svg.appendChild(g);
   });
 }
@@ -729,32 +733,34 @@ function toggleSkill(id) {
   </div>`;
 }
 
-function renderSkillList() {
-  const list = document.getElementById('skillList');
-  if (!list) return;
-  list.innerHTML = '';
-  allSkills.forEach(s => {
-    const sid = s.id || s.key;
-    const div = document.createElement('div');
-    div.className = 'skill-list-item';
-    div.innerHTML = `
-      <div style="flex:1;">
-        <div class="skill-list-name">${s.label}</div>
-        <div class="skill-list-sub">${s.sub || ''}</div>
-      </div>`;
-    const btn = document.createElement('button');
-    btn.className = 'icon-btn';
-    btn.textContent = '✎';
-    btn.addEventListener('click', () => openEditSkillModal(sid, s.label, s.sub || ''));
-    div.appendChild(btn);
-    list.appendChild(div);
-  });
-}
-
 function openEditSkillModal(id, label, sub) {
   editingSkillId = id;
   document.getElementById('editSkillName').value = label;
   document.getElementById('editSkillSub').value = sub;
+  
+  // Render checkboxes inside Edit modal to manage connections for this specific skill
+  const picker = document.getElementById('editSkillConnectionPicker');
+  picker.innerHTML = allSkills
+    .filter(s => (s.id || s.key) !== id) // Can't connect to itself
+    .map(s => {
+      const sid = s.id || s.key;
+      // See if a connection already exists
+      const existingConn = allConnections.find(c => 
+        (c.from === id && c.to === sid) || (c.to === id && c.from === sid)
+      );
+      const isChecked = existingConn ? 'checked' : '';
+      const showDesc = existingConn ? 'show' : '';
+      const descVal = existingConn ? existingConn.label : '';
+
+      return `<div class="skill-conn-item">
+        <input type="checkbox" class="skill-conn-check" id="edit_conn_${sid}" value="${sid}" ${isChecked} onchange="toggleConnDesc(this)">
+        <div style="flex:1;">
+          <label class="skill-conn-label" for="edit_conn_${sid}">${s.label}</label>
+          <input type="text" class="skill-conn-desc ${showDesc}" id="desc_${sid}" value="${descVal}" placeholder="How do they connect?">
+        </div>
+      </div>`;
+    }).join('');
+
   openModal('editSkillModal');
   setTimeout(() => document.getElementById('editSkillName').focus(), 100);
 }
@@ -764,12 +770,23 @@ function updateSkill() {
   const sub = document.getElementById('editSkillSub').value.trim();
   if (!label || !editingSkillId) return;
   
+  // Update core skill parameters
   allSkills = allSkills.map(s => (s.id === editingSkillId || s.key === editingSkillId) ? { ...s, label, sub } : s);
   localStorage.setItem('msilas-skills', JSON.stringify(allSkills));
   
+  // Clear connections that used this skill to cleanly rebuild them from checkboxes
+  allConnections = allConnections.filter(c => c.from !== editingSkillId && c.to !== editingSkillId);
+
+  // Save updated or newly checked connections
+  document.querySelectorAll('#editSkillConnectionPicker .skill-conn-check:checked').forEach(cb => {
+    const toId = cb.value;
+    const lbl = document.getElementById('desc_' + toId).value.trim() || `${label} meets ${toId}`;
+    allConnections.push({ from: editingSkillId, to: toId, label: lbl });
+  });
+  localStorage.setItem('msilas-connections', JSON.stringify(allConnections));
+  
   closeModal('editSkillModal');
   editingSkillId = null;
-  renderSkillList();
   buildMap();
   toggleSkill(null);
 }
@@ -781,8 +798,8 @@ function openAddSkillModal() {
   picker.innerHTML = allSkills.map(s => {
     const sid = s.id || s.key;
     return `<div class="skill-conn-item">
-      <input type="checkbox" class="skill-conn-check" id="conn_${sid}" value="${sid}" onchange="toggleConnDesc(this)">
-      <div style="flex:1;"><label class="skill-conn-label" for="conn_${sid}">${s.label}</label>
+      <input type="checkbox" class="skill-conn-check" id="add_conn_${sid}" value="${sid}" onchange="toggleConnDesc(this)">
+      <div style="flex:1;"><label class="skill-conn-label" for="add_conn_${sid}">${s.label}</label>
       <input type="text" class="skill-conn-desc" id="desc_${sid}" placeholder="How do they connect?"></div></div>`;
   }).join('');
   openModal('addSkillModal');
@@ -790,7 +807,9 @@ function openAddSkillModal() {
 }
 
 function toggleConnDesc(cb) {
-  const d = document.getElementById('desc_' + cb.value);
+  // Find the description box next to the checkbox layout
+  const container = cb.closest('.skill-conn-item');
+  const d = container.querySelector('.skill-conn-desc');
   if (d) d.classList.toggle('show', cb.checked);
 }
 
@@ -801,7 +820,6 @@ function saveSkill() {
   
   const key = 'skill_' + Date.now();
   
-  // Distribute dynamically on layout wheel coordinates
   const angle = Math.random() * Math.PI * 2;
   const cx = Math.round(220 + Math.cos(angle) * 150);
   const cy = Math.round(220 + Math.sin(angle) * 150);
@@ -809,15 +827,15 @@ function saveSkill() {
   allSkills.push({ id: key, key, label, sub, cx, cy });
   localStorage.setItem('msilas-skills', JSON.stringify(allSkills));
 
-  document.querySelectorAll('.skill-conn-check:checked').forEach(cb => {
+  document.querySelectorAll('#skillConnectionPicker .skill-conn-check:checked').forEach(cb => {
     const toId = cb.value;
-    const lbl = document.getElementById('desc_' + toId).value.trim() || `${label} meets ${toId}`;
+    const container = cb.closest('.skill-conn-item');
+    const lbl = container.querySelector('.skill-conn-desc').value.trim() || `${label} meets ${toId}`;
     allConnections.push({ from: key, to: toId, label: lbl });
   });
   localStorage.setItem('msilas-connections', JSON.stringify(allConnections));
 
   closeModal('addSkillModal');
-  renderSkillList();
   buildMap();
   toggleSkill(null);
 }
@@ -829,7 +847,6 @@ function init() {
   populateSelects();
   renderAll();
   renderProjects();
-  renderSkillList();
 }
 
 init();
