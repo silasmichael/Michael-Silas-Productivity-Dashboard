@@ -143,6 +143,15 @@
   .debug-msg { font-size:12px; color:#aa6666; line-height:1.6; word-break:break-all; font-family:monospace; }
   .debug-close { margin-top:10px; background:none; border:1px solid #4a1a1a; border-radius:4px; color:#666; font-size:11px; padding:4px 10px; cursor:pointer; }
 
+
+  .skill-conn-item { display:flex; align-items:flex-start; gap:10px; padding:8px 0; border-bottom:1px solid var(--border); }
+  .skill-conn-item:last-child { border-bottom:none; }
+  .skill-conn-check { width:16px; height:16px; accent-color:var(--gold); flex-shrink:0; margin-top:2px; cursor:pointer; }
+  .skill-conn-label { font-size:13px; color:var(--text); flex:1; }
+  .skill-conn-desc { width:100%; background:var(--bg); border:1px solid var(--border); border-radius:4px; padding:5px 8px; color:var(--text); font-size:11px; font-family:'Lora',serif; outline:none; margin-top:4px; display:none; }
+  .skill-conn-desc.show { display:block; }
+  .skill-conn-desc:focus { border-color:var(--gold); }
+
 </style>
 </head>
 <body>
@@ -175,11 +184,13 @@
 <!-- ADD SKILL MODAL -->
 <div class="modal-overlay" id="addSkillModal">
   <div class="modal">
-    <div class="modal-title" id="skillModalTitle">New Skill</div>
+    <div class="modal-title">New Skill</div>
     <label class="modal-label">Skill name</label>
-    <input type="text" class="modal-input" id="skillName" placeholder="e.g. Music, Language, Photography...">
+    <input type="text" class="modal-input" id="skillName" placeholder="e.g. Photography, Music...">
     <label class="modal-label">Subtitle</label>
-    <input type="text" class="modal-input" id="skillSub" placeholder="e.g. Guitar, Spanish, Canon R50...">
+    <input type="text" class="modal-input" id="skillSub" placeholder="e.g. Canon R50, Guitar...">
+    <label class="modal-label">Connect to existing skills</label>
+    <div id="skillConnectionPicker" style="background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:12px;margin-bottom:14px;max-height:200px;overflow-y:auto;"></div>
     <div class="modal-btns">
       <button class="modal-cancel" onclick="closeModal('addSkillModal')">Cancel</button>
       <button class="modal-save" onclick="saveSkill()">Add Skill</button>
@@ -863,6 +874,90 @@ function toggleSkill(id) {
     <button class="clear-btn" onclick="toggleSkill('${activeSkill}')">Clear</button>
   </div>`;
 }
+
+
+// getCategoryIcon
+function getCategoryIcon(cat) {
+  const all = allHabits();
+  return all[cat] ? all[cat].icon : '⚡';
+}
+
+function openAddSkillModal() {
+  document.getElementById('skillName').value = '';
+  document.getElementById('skillSub').value = '';
+  const picker = document.getElementById('skillConnectionPicker');
+  const src = allSkills.length > 0 ? allSkills : SKILLS;
+  picker.innerHTML = src.map(s => {
+    const sid = s.id || s.key;
+    return '<div class="skill-conn-item">' +
+      '<input type="checkbox" class="skill-conn-check" id="conn_' + sid + '" value="' + sid + '" onchange="toggleConnDesc(this)">' +
+      '<div style="flex:1;"><label class="skill-conn-label" for="conn_' + sid + '">' + s.label + '</label>' +
+      '<input type="text" class="skill-conn-desc" id="desc_' + sid + '" placeholder="How do they connect?"></div></div>';
+  }).join('');
+  openModal('addSkillModal');
+  setTimeout(() => document.getElementById('skillName').focus(), 100);
+}
+
+function toggleConnDesc(cb) {
+  const d = document.getElementById('desc_' + cb.value);
+  if (d) d.classList.toggle('show', cb.checked);
+}
+
+async function saveSkill() {
+  const label = document.getElementById('skillName').value.trim();
+  const sub = document.getElementById('skillSub').value.trim();
+  if (!label) { document.getElementById('skillName').focus(); return; }
+  const key = 'skill_' + Date.now();
+  closeModal('addSkillModal');
+  let newId = key;
+  try {
+    setSyncing();
+    const { data, error } = await sb.from('skills').insert({ user_id: USER_ID, key, label, sub }).select('id').single();
+    if (error) throw error;
+    newId = data.id;
+    setSynced();
+  } catch(e) {
+    const local = JSON.parse(localStorage.getItem('msilas-local-skills') || '[]');
+    local.push({ id: key, key, label, sub });
+    localStorage.setItem('msilas-local-skills', JSON.stringify(local));
+    setError();
+  }
+  for (const cb of document.querySelectorAll('.skill-conn-check:checked')) {
+    const toId = cb.value;
+    const lbl = (document.getElementById('desc_' + toId)||{}).value || (label + ' meets ' + toId);
+    try { await sb.from('skill_connections').insert({ user_id: USER_ID, from_skill: newId, to_skill: toId, label: lbl.trim() }); } catch {}
+  }
+  const fresh = await loadSkills();
+  if (fresh) allSkills = fresh;
+  const svg = document.getElementById('skillMap');
+  while (svg.firstChild) svg.removeChild(svg.firstChild);
+  buildMap(); toggleSkill(null);
+}
+
+async function loadSkills() {
+  try {
+    const { data, error } = await sb.from('skills').select('*').eq('user_id', USER_ID);
+    if (error) throw error;
+    return data && data.length > 0 ? data : null;
+  } catch { return null; }
+}
+
+async function saveProjectOffline(proj) {
+  const local = JSON.parse(localStorage.getItem('msilas-offline-projects') || '[]');
+  const entry = { ...proj, id: 'offline_' + Date.now(), created_at: new Date().toISOString() };
+  local.push(entry); localStorage.setItem('msilas-offline-projects', JSON.stringify(local));
+  allProjects = [...allProjects, entry]; renderProjects();
+  setSyncStatus('error', 'Saved offline');
+}
+
+async function loadProjectDayCounts() {
+  try {
+    const { data, error } = await sb.from('project_logs').select('project_id,date').eq('user_id', USER_ID);
+    if (error) throw error;
+    const c = {}; data.forEach(r => { c[r.project_id] = (c[r.project_id]||0)+1; }); return c;
+  } catch { return {}; }
+}
+
 
 // ── Init ──────────────────────────────────────
 async function init() {
