@@ -87,6 +87,7 @@
   .proj-status { font-size:10px; letter-spacing:1px; text-transform:uppercase; margin-top:5px; }
   .status-active { color:var(--green); }
   .status-paused { color:#886633; }
+  .status-completed { color:#4a7a9a; }
   .proj-btns { display:flex; flex-direction:column; gap:4px; flex-shrink:0; }
   .add-proj-btn { width:100%; background:none; border:1px dashed #2a2a2a; border-radius:8px; padding:12px; color:#444; font-size:12px; cursor:pointer; font-family:'Lora',serif; letter-spacing:0.5px; transition:color 0.2s,border-color 0.2s; margin-top:4px; }
   .add-proj-btn:hover { color:var(--gold); border-color:var(--gold); }
@@ -135,6 +136,13 @@
   .sync-dot.yellow { background:#886633; animation:pulse 1.5s infinite; }
   @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.3} }
 
+
+  .debug-box { display:none; margin:12px 0; background:#1a0a0a; border:1px solid #4a1a1a; border-left:3px solid #cc4444; border-radius:8px; padding:14px; }
+  .debug-box.show { display:block; }
+  .debug-title { font-size:10px; color:#cc4444; letter-spacing:1px; text-transform:uppercase; margin-bottom:8px; }
+  .debug-msg { font-size:12px; color:#aa6666; line-height:1.6; word-break:break-all; font-family:monospace; }
+  .debug-close { margin-top:10px; background:none; border:1px solid #4a1a1a; border-radius:4px; color:#666; font-size:11px; padding:4px 10px; cursor:pointer; }
+
 </style>
 </head>
 <body>
@@ -159,6 +167,22 @@
     <div class="modal-btns">
       <button class="modal-cancel" onclick="closeModal('editModal')">Cancel</button>
       <button class="modal-save" onclick="saveEdit()">Save</button>
+    </div>
+  </div>
+</div>
+
+
+<!-- ADD SKILL MODAL -->
+<div class="modal-overlay" id="addSkillModal">
+  <div class="modal">
+    <div class="modal-title" id="skillModalTitle">New Skill</div>
+    <label class="modal-label">Skill name</label>
+    <input type="text" class="modal-input" id="skillName" placeholder="e.g. Music, Language, Photography...">
+    <label class="modal-label">Subtitle</label>
+    <input type="text" class="modal-input" id="skillSub" placeholder="e.g. Guitar, Spanish, Canon R50...">
+    <div class="modal-btns">
+      <button class="modal-cancel" onclick="closeModal('addSkillModal')">Cancel</button>
+      <button class="modal-save" onclick="saveSkill()">Add Skill</button>
     </div>
   </div>
 </div>
@@ -189,8 +213,9 @@
     <input type="text" class="modal-input" id="projDesc" placeholder="What is this about?">
     <label class="modal-label">Status</label>
     <select class="modal-select" id="projStatus">
-      <option value="active">Active</option>
-      <option value="paused">Paused</option>
+      <option value="active">🟢 Active</option>
+      <option value="paused">🟡 Paused</option>
+      <option value="completed">✅ Completed</option>
     </select>
     <div class="modal-btns">
       <button class="modal-cancel" onclick="closeModal('projectModal')">Cancel</button>
@@ -206,7 +231,16 @@
     <div class="header-date" id="headerDate"></div>
   </div>
 
-  <div class="top-stats">
+  
+<div class="page-wrap">
+  <div class="debug-box" id="debugBox">
+    <div class="debug-title">Connection Error</div>
+    <div class="debug-msg" id="debugMsg"></div>
+    <button class="debug-close" onclick="document.getElementById('debugBox').classList.remove('show')">Dismiss</button>
+  </div>
+</div>
+
+<div class="top-stats">
     <div class="stat-box"><div class="stat-number" id="streakNum">0</div><div class="stat-label">Streak</div></div>
     <div class="stat-box"><div class="stat-number" id="activeDaysNum">0</div><div class="stat-label">Active Days</div></div>
     <div class="stat-box"><div class="stat-number" id="totalThingsNum">0</div><div class="stat-label">Total Things</div></div>
@@ -217,8 +251,9 @@
     <!-- LEFT: Skills Map + Projects -->
     <div class="desktop-left">
 
-      <div class="section">
-        <div class="section-label">Skills Map</div>
+      <div class="section" style="display:flex;align-items:center;justify-content:space-between;">
+        <div class="section-label" style="flex:1;margin-bottom:0;">Skills Map</div>
+        <button class="add-cat-btn" style="margin-bottom:14px;" onclick="openAddSkillModal()">+ Skill</button>
       </div>
       <div class="map-hint">Tap a skill to see how it connects</div>
       <svg id="skillMap" viewBox="0 0 440 440"></svg>
@@ -290,6 +325,13 @@ function setError() {
   document.getElementById('syncDot').className = 'sync-dot';
   document.getElementById('syncText').textContent = 'Offline';
 }
+function showDebug(msg, type) {
+  const box = document.getElementById('debugBox');
+  document.getElementById('debugMsg').textContent = msg;
+  box.style.borderLeftColor = type === 'success' ? '#4a9a4a' : '#cc4444';
+  box.classList.add('show');
+}
+
 function setSyncStatus(type, msg) {
   const dot = document.getElementById('syncDot');
   const txt = document.getElementById('syncText');
@@ -309,7 +351,7 @@ function cacheGet(key, def) { try { const v = localStorage.getItem(key); return 
 async function loadLogs() {
   try {
     const { data, error } = await sb.from('activity_logs').select('date,entries').eq('user_id', USER_ID);
-    if (error) throw error;
+    if (error) { showDebug('Load logs failed: ' + error.message); throw error; }
     const logs = {};
     data.forEach(row => { logs[row.date] = row.entries; });
     cacheSet('msilas-logs', logs);
@@ -330,7 +372,7 @@ async function saveLog(date, entries) {
       { user_id: USER_ID, date, entries, updated_at: new Date().toISOString() },
       { onConflict: 'user_id,date' }
     );
-    if (error) { console.error('saveLog error:', error.message, error.details); throw error; }
+    if (error) { console.error('saveLog error:', error.message, error.details); showDebug('Save failed: ' + error.message + (error.hint ? ' — ' + error.hint : '')); throw error; }
     setSynced();
   } catch(e) { console.error('saveLog failed:', e); setError(); }
 }
@@ -446,6 +488,9 @@ let editingProject = null;
 let activeSkill = null;
 let allLogs = {};
 let allProjects = [];
+let projectDayCounts = {};
+let allSkills = [];
+let allConnections = [];
 
 function todayKey() { return new Date().toISOString().split('T')[0]; }
 function last30() {
@@ -531,23 +576,43 @@ function renderProjects() {
     list.innerHTML = '<li style="color:#2a2a2a;font-size:13px;font-style:italic;padding:10px 0;">No projects yet.</li>';
     return;
   }
-  allProjects.forEach((p) => {
-    const isActive = p.status === 'active';
-    const li = document.createElement('li');
-    li.className = 'project-item';
-    li.innerHTML = `
-      <div class="proj-dot" style="background:${isActive ? '#4a9a4a' : '#886633'}"></div>
-      <div class="proj-content">
-        <div class="proj-name">${p.name}</div>
-        ${p.description ? `<div class="proj-desc">${p.description}</div>` : ''}
-        <div class="proj-status ${isActive ? 'status-active' : 'status-paused'}">${isActive ? '● Active' : '● Paused'}</div>
+  const active = allProjects.filter(p => p.status === 'active' || p.status === 'paused');
+  const completed = allProjects.filter(p => p.status === 'completed');
+
+  if (active.length > 0) {
+    active.forEach(p => list.appendChild(buildProjectItem(p)));
+  }
+  if (completed.length > 0) {
+    const divider = document.createElement('li');
+    divider.innerHTML = '<div style="font-size:10px;color:#333;text-transform:uppercase;letter-spacing:1px;padding:12px 0 8px;">Completed</div>';
+    list.appendChild(divider);
+    completed.forEach(p => list.appendChild(buildProjectItem(p)));
+  }
+}
+
+function buildProjectItem(p) {
+  const dotColor = p.status === 'active' ? '#4a9a4a' : p.status === 'completed' ? '#4a7a9a' : '#886633';
+  const statusLabel = p.status === 'active' ? '● Active' : p.status === 'completed' ? '✓ Completed' : '● Paused';
+  const statusClass = p.status === 'active' ? 'status-active' : p.status === 'completed' ? 'status-completed' : 'status-paused';
+  const days = projectDayCounts[p.id] || 0;
+  const li = document.createElement('li');
+  li.className = 'project-item';
+  li.innerHTML = `
+    <div class="proj-dot" style="background:${dotColor}"></div>
+    <div class="proj-content">
+      <div class="proj-name">${p.name}</div>
+      ${p.description ? `<div class="proj-desc">${p.description}</div>` : ''}
+      <div style="display:flex;align-items:center;gap:12px;margin-top:5px;">
+        <div class="proj-status ${statusClass}">${statusLabel}</div>
+        ${days > 0 ? `<div style="font-size:10px;color:#555;">📅 ${days} day${days > 1 ? 's' : ''} logged</div>` : ''}
       </div>
-      <div class="proj-btns">
-        <button class="icon-btn" onclick="openProjectModal('${p.id}')">✎</button>
-        <button class="icon-btn del" onclick="handleDeleteProject('${p.id}')">×</button>
-      </div>`;
-    list.appendChild(li);
-  });
+    </div>
+    <div class="proj-btns">
+      <button class="icon-btn" onclick="logDayToProject('${p.id}','${p.name}')" title="Log today to this project">+</button>
+      <button class="icon-btn" onclick="openProjectModal('${p.id}')">✎</button>
+      <button class="icon-btn del" onclick="handleDeleteProject('${p.id}')">×</button>
+    </div>`;
+  return li;
 }
 
 async function addEntry() {
@@ -648,12 +713,25 @@ function openProjectModal(id) {
 async function saveProject() {
   const name = document.getElementById('projName').value.trim();
   if (!name) { document.getElementById('projName').focus(); return; }
-  const proj = { name, desc: document.getElementById('projDesc').value.trim(), status: document.getElementById('projStatus').value };
+  const status = document.getElementById('projStatus').value;
+  const description = document.getElementById('projDesc').value.trim();
   closeModal('projectModal');
-  await saveProj(proj, editingProject);
-  editingProject = null;
-  allProjects = await loadProjs();
-  renderProjects();
+  setSyncing();
+  try {
+    if (editingProject) {
+      const updates = { name, description, status };
+      if (status === 'completed') updates.completed_at = new Date().toISOString();
+      const { error } = await sb.from('projects').update(updates).eq('id', editingProject).eq('user_id', USER_ID);
+      if (error) { showDebug('Update failed: ' + error.message); throw error; }
+    } else {
+      const { error } = await sb.from('projects').insert({ user_id: USER_ID, name, description, status });
+      if (error) { showDebug('Insert failed: ' + error.message); throw error; }
+    }
+    setSynced();
+    editingProject = null;
+    allProjects = await loadProjs();
+    renderProjects();
+  } catch(e) { setError(); }
 }
 
 async function handleDeleteProject(id) {
