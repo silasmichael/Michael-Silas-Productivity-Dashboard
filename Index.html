@@ -211,6 +211,21 @@
     <input type="text" class="modal-input" id="projName" placeholder="e.g. Babel Animation, Unanswered Book...">
     <label class="modal-label">Short description (optional)</label>
     <input type="text" class="modal-input" id="projDesc" placeholder="What is this about?">
+    <label class="modal-label">Linked to Category (auto-tracks days)</label>
+    <select class="modal-select" id="projCategory">
+      <option value="">— None —</option>
+      <option value="writing">✍️ Writing / Editing</option>
+      <option value="animation">🎬 Animation</option>
+      <option value="design">🎨 Design / Cover work</option>
+      <option value="coding">💻 Website / Coding</option>
+      <option value="reading">📖 Reading</option>
+      <option value="community">🤝 Community / Outreach</option>
+      <option value="instagram">📱 Instagram Post</option>
+      <option value="vibe">🎁 Vibe Gift Shop</option>
+      <option value="book_hangout">📚 Book Hangout</option>
+      <option value="epicenter">🌍 Epicenter of Life</option>
+      <option value="other">⚡ Other</option>
+    </select>
     <label class="modal-label">Status</label>
     <select class="modal-select" id="projStatus">
       <option value="active">🟢 Active</option>
@@ -263,7 +278,7 @@
         <div class="section-label">Current Projects</div>
       </div>
       <ul class="projects-list" id="projectsList"></ul>
-      <button class="add-proj-btn" onclick="openProjectModal(-1)">+ Add Project</button>
+      <button class="add-proj-btn" onclick="openProjectModal(null)">+ Add Project</button>
 
     </div>
 
@@ -602,13 +617,13 @@ function buildProjectItem(p) {
     <div class="proj-content">
       <div class="proj-name">${p.name}</div>
       ${p.description ? `<div class="proj-desc">${p.description}</div>` : ''}
-      <div style="display:flex;align-items:center;gap:12px;margin-top:5px;">
+      <div style="display:flex;align-items:center;gap:12px;margin-top:5px;flex-wrap:wrap;">
         <div class="proj-status ${statusClass}">${statusLabel}</div>
-        ${days > 0 ? `<div style="font-size:10px;color:#555;">📅 ${days} day${days > 1 ? 's' : ''} logged</div>` : ''}
+        ${p.related_category ? `<div style="font-size:10px;color:#555;">${getCategoryIcon(p.related_category)} ${p.related_category}</div>` : ''}
+        ${days > 0 ? `<div style="font-size:10px;color:var(--gold);">📅 ${days} day${days !== 1 ? 's' : ''}</div>` : ''}
       </div>
     </div>
     <div class="proj-btns">
-      <button class="icon-btn" onclick="logDayToProject('${p.id}','${p.name}')" title="Log today to this project">+</button>
       <button class="icon-btn" onclick="openProjectModal('${p.id}')">✎</button>
       <button class="icon-btn del" onclick="handleDeleteProject('${p.id}')">×</button>
     </div>`;
@@ -625,6 +640,24 @@ async function addEntry() {
   input.value = '';
   renderAll();
   await saveLog(today, allLogs[today]);
+  // Auto-track: find active projects linked to this category
+  await autoTrackProjects(cat, today);
+}
+
+async function autoTrackProjects(category, date) {
+  const matched = allProjects.filter(p => p.status === 'active' && p.related_category === category);
+  for (const p of matched) {
+    try {
+      await sb.from('project_logs').upsert(
+        { user_id: USER_ID, project_id: p.id, date },
+        { onConflict: 'user_id,project_id,date' }
+      );
+    } catch(e) { console.error('autoTrack failed:', e); }
+  }
+  if (matched.length > 0) {
+    projectDayCounts = await loadProjectDayCounts();
+    renderProjects();
+  }
 }
 
 async function deleteEntry(i) {
@@ -692,7 +725,7 @@ async function saveNewCategory() {
 }
 
 function openProjectModal(id) {
-  editingProject = id || null;
+  editingProject = (id && id !== '-1' && id !== -1) ? id : null;
   document.getElementById('projModalTitle').textContent = id ? 'Edit Project' : 'New Project';
   if (id) {
     const p = allProjects.find(p => p.id === id);
@@ -700,11 +733,13 @@ function openProjectModal(id) {
       document.getElementById('projName').value = p.name || '';
       document.getElementById('projDesc').value = p.description || '';
       document.getElementById('projStatus').value = p.status || 'active';
+      document.getElementById('projCategory').value = p.related_category || '';
     }
   } else {
     document.getElementById('projName').value = '';
     document.getElementById('projDesc').value = '';
     document.getElementById('projStatus').value = 'active';
+    document.getElementById('projCategory').value = '';
   }
   openModal('projectModal');
   setTimeout(() => document.getElementById('projName').focus(), 100);
@@ -718,7 +753,7 @@ async function saveProject() {
   closeModal('projectModal');
   setSyncing();
   try {
-    if (editingProject) {
+    if (editingProject && editingProject !== '-1' && editingProject !== -1) {
       const updates = { name, description, status };
       if (status === 'completed') updates.completed_at = new Date().toISOString();
       const { error } = await sb.from('projects').update(updates).eq('id', editingProject).eq('user_id', USER_ID);
