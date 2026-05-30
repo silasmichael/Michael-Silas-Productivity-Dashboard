@@ -91,7 +91,7 @@
   .add-proj-btn:hover { color:var(--gold); border-color:var(--gold); }
 
   /* SKILLS MAP */
-  #skillMap { width:100%; height:auto; display:block; }
+  #skillMap { width:100%; height:440px; background:#080808; border:1px solid var(--border); border-radius:12px; display:block; overflow:hidden; }
   .map-hint { font-size:11px; color:#444; text-align:center; margin-bottom:10px; font-style:italic; }
   .conn-info { margin-top:12px; background:var(--bg2); border:1px solid var(--border); border-left:3px solid var(--gold); border-radius:8px; padding:14px; }
   .conn-title { font-family:'Playfair Display',serif; font-size:14px; color:var(--gold); margin-bottom:10px; }
@@ -119,6 +119,8 @@
   .modal-save:hover { background:#f0d060; }
   .modal-cancel { flex:1; background:none; border:1px solid var(--border); border-radius:8px; padding:12px; color:#555; font-size:14px; font-family:'Lora',serif; cursor:pointer; transition:color 0.2s,border-color 0.2s; }
   .modal-cancel:hover { color:var(--text); border-color:#555; }
+  .modal-delete { background:#4a1515; border:1px solid #6a2525; color:#ffaaaa; border-radius:8px; padding:12px 16px; font-size:13px; cursor:pointer; font-family:'Lora',serif; margin-bottom:18px; width:100%; transition:background 0.2s; text-align:center; }
+  .modal-delete:hover { background:#6a2525; }
   .emoji-picker { display:flex; flex-wrap:wrap; gap:7px; background:var(--bg2); border:1px solid var(--border); border-radius:8px; padding:10px; margin-bottom:4px; }
   .emoji-opt { font-size:20px; cursor:pointer; padding:4px; border-radius:6px; transition:background 0.15s; }
   .emoji-opt:hover,.emoji-opt.selected { background:#2a2a2a; }
@@ -133,15 +135,24 @@
   .skill-conn-desc { width:100%; background:var(--bg); border:1px solid var(--border); border-radius:4px; padding:5px 8px; color:var(--text); font-size:11px; font-family:'Lora',serif; outline:none; margin-top:4px; display:none; }
   .skill-conn-desc.show { display:block; }
   .skill-conn-desc:focus { border-color:var(--gold); }
+  
+  /* SVG MIND MAP BADGE STYLING */
+  .node-rect { fill:#141414; stroke:#2a2a2a; stroke-width:1.5; rx:14; ry:14; transition: fill 0.2s, stroke 0.2s; }
+  .skill-node:hover .node-rect { stroke:#555; }
+  .node-title { fill:#d0cbc0; font-size:12px; font-family:'Playfair Display',serif; font-weight:700; text-anchor:middle; pointer-events:none; }
+  .node-sub { fill:#555; font-size:9px; font-family:'Lora',serif; text-anchor:middle; pointer-events:none; }
+  .conn-line { stroke:#222; stroke-width:1.5; transition: stroke 0.2s, stroke-width 0.2s; }
+  .link-dot { fill:#333; transition: fill 0.2s; }
 </style>
 </head>
 <body>
 
 <div class="sync-badge">
   <div class="sync-dot"></div>
-  <span>Local Storage Active</span>
+  <span>Mind Map Cache Enabled</span>
 </div>
 
+<!-- EDIT ENTRY MODAL -->
 <div class="modal-overlay" id="editModal">
   <div class="modal">
     <div class="modal-title">Edit Entry</div>
@@ -156,9 +167,11 @@
   </div>
 </div>
 
+<!-- EDIT SKILL MODAL -->
 <div class="modal-overlay" id="editSkillModal">
   <div class="modal" style="max-height: 85vh; overflow-y: auto;">
     <div class="modal-title">Edit Skill</div>
+    <button class="modal-delete" onclick="deleteCurrentSkill()">⚠️ Delete This Skill</button>
     <label class="modal-label">Skill name</label>
     <input type="text" class="modal-input" id="editSkillName" placeholder="Skill name">
     <label class="modal-label">Subtitle</label>
@@ -172,6 +185,7 @@
   </div>
 </div>
 
+<!-- ADD SKILL MODAL -->
 <div class="modal-overlay" id="addSkillModal">
   <div class="modal">
     <div class="modal-title">New Skill</div>
@@ -188,6 +202,7 @@
   </div>
 </div>
 
+<!-- ADD CATEGORY MODAL -->
 <div class="modal-overlay" id="addCatModal">
   <div class="modal">
     <div class="modal-title">New Category</div>
@@ -203,6 +218,7 @@
   </div>
 </div>
 
+<!-- PROJECT MODAL -->
 <div class="modal-overlay" id="projectModal">
   <div class="modal">
     <div class="modal-title" id="projModalTitle">New Project</div>
@@ -225,6 +241,7 @@
   </div>
 </div>
 
+<!-- PAGE -->
 <div class="page-wrap">
   <div class="header">
     <div class="header-title">Michael's Productivity Dashboard</div>
@@ -238,13 +255,14 @@
   </div>
 
   <div class="desktop-grid">
+    <!-- LEFT: Interactive Mind Map View -->
     <div class="desktop-left">
       <div class="section" style="display:flex;align-items:center;justify-content:space-between;">
-        <div class="section-label" style="flex:1;margin-bottom:0;">Skills Map</div>
+        <div class="section-label" style="flex:1;margin-bottom:0;">Skills Mind Map</div>
         <button class="add-cat-btn" style="margin-bottom:14px;" onclick="openAddSkillModal()">+ Skill</button>
       </div>
-      <div class="map-hint">Tap once to view highlights • Double-tap/click to edit skill data</div>
-      <svg id="skillMap" viewBox="0 0 440 440"></svg>
+      <div class="map-hint">Click to see connection tracks • Double-tap/click to edit or delete</div>
+      <svg id="skillMap"></svg>
       <div id="connectionInfo"></div>
 
       <div class="section" style="margin-top:16px;">
@@ -254,6 +272,7 @@
       <button class="add-proj-btn" onclick="openProjectModal(null)">+ Add Project</button>
     </div>
 
+    <!-- RIGHT: Today + 30 Days -->
     <div class="desktop-right">
       <div class="section">
         <div class="section-label">Today</div>
@@ -278,7 +297,7 @@
 </div>
 
 <script>
-// ── Core Local Cache Data Defaults ────────────────────
+// ── Core Mind Map Setup & Data Cache ────────────────────
 const HABITS_DEFAULT = {
   writing:      { label:"Writing / Editing",   icon:"✍️" },
   animation:    { label:"Animation",            icon:"🎬" },
@@ -294,14 +313,14 @@ const HABITS_DEFAULT = {
 };
 
 const SKILLS_DEFAULT = [
-  { id:"writing",   label:"Writing",    sub:"Poetry & Books",   cx:220, cy:62  },
-  { id:"animation", label:"Animation",  sub:"Callipeg",         cx:330, cy:110 },
-  { id:"drawing",   label:"Drawing",    sub:"Procreate",        cx:378, cy:220 },
-  { id:"design",    label:"Design",     sub:"Graphic & Covers", cx:330, cy:330 },
-  { id:"community", label:"Community",  sub:"Book Hangout",     cx:220, cy:378 },
-  { id:"faith",     label:"Faith",      sub:"Biblical Study",   cx:110, cy:330 },
-  { id:"coding",    label:"Coding",     sub:"Web & Apps",       cx:62,  cy:220 },
-  { id:"reading",   label:"Reading",    sub:"Knowledge",        cx:110, cy:110 },
+  { id:"writing",   label:"Writing",    sub:"Poetry & Books" },
+  { id:"animation", label:"Animation",  sub:"Callipeg" },
+  { id:"drawing",   label:"Drawing",    sub:"Procreate" },
+  { id:"design",    label:"Design",     sub:"Graphic & Covers" },
+  { id:"community", label:"Community",  sub:"Book Hangout" },
+  { id:"faith",     label:"Faith",      sub:"Biblical Study" },
+  { id:"coding",    label:"Coding",     sub:"Web & Apps" },
+  { id:"reading",   label:"Reading",    sub:"Knowledge" },
 ];
 
 const CONNECTIONS_DEFAULT = [
@@ -327,7 +346,7 @@ let editingEntryIndex = -1;
 let editingProject = null;
 let activeSkill = null;
 
-// Localized application engine caches
+// Application engine states loaded directly from client storage array
 let allLogs = JSON.parse(localStorage.getItem('msilas-logs') || '{}');
 let customCats = JSON.parse(localStorage.getItem('msilas-cats') || '{}');
 let allProjects = JSON.parse(localStorage.getItem('msilas-projs') || '[]');
@@ -335,9 +354,66 @@ let allSkills = JSON.parse(localStorage.getItem('msilas-skills') || '[]');
 let allConnections = JSON.parse(localStorage.getItem('msilas-connections') || '[]');
 let projectLogs = JSON.parse(localStorage.getItem('msilas-project-logs') || '[]');
 
-// Setup defaults if missing
 if (allSkills.length === 0) { allSkills = [...SKILLS_DEFAULT]; localStorage.setItem('msilas-skills', JSON.stringify(allSkills)); }
 if (allConnections.length === 0) { allConnections = [...CONNECTIONS_DEFAULT]; localStorage.setItem('msilas-connections', JSON.stringify(allConnections)); }
+
+// Simple Force Simulation Core for Mind Map Formatting
+function runForceLayout() {
+  const width = 440, height = 440;
+  
+  // Assign positions if they do not exist yet
+  allSkills.forEach((s, idx) => {
+    if (s.x === undefined || s.y === undefined) {
+      s.x = width / 2 + (Math.random() - 0.5) * 100;
+      s.y = height / 2 + (Math.random() - 0.5) * 100;
+    }
+  });
+
+  // Run a small structural physics step to distribute elements legibly
+  for (let step = 0; step < 80; step++) {
+    // 1. Repel force between node blocks
+    for (let i = 0; i < allSkills.length; i++) {
+      for (let j = i + 1; j < allSkills.length; j++) {
+        let dx = allSkills[j].x - allSkills[i].x;
+        let dy = allSkills[j].y - allSkills[i].y;
+        if (dx === 0) dx = 0.1; 
+        let dist = Math.sqrt(dx * dx + dy * dy);
+        let minDist = 95; // Ensure labels clear each other completely
+        if (dist < minDist) {
+          let force = (minDist - dist) / dist * 0.45;
+          let fx = dx * force;
+          let fy = dy * force;
+          allSkills[i].x -= fx; allSkills[i].y -= fy;
+          allSkills[j].x += fx; allSkills[j].y += fy;
+        }
+      }
+    }
+
+    // 2. Link attraction forces
+    allConnections.forEach(c => {
+      let f = allSkills.find(s => (s.id === c.from || s.key === c.from));
+      let t = allSkills.find(s => (s.id === c.to || s.key === c.to));
+      if (!f || !t) return;
+      let dx = t.x - f.x;
+      let dy = t.y - f.y;
+      let dist = Math.sqrt(dx * dx + dy * dy);
+      let targetLen = 130;
+      if (dist > 0) {
+        let force = (dist - targetLen) / dist * 0.06;
+        let fx = dx * force;
+        let fy = dy * force;
+        f.x += fx; f.y += fy;
+        t.x -= fx; t.y -= fy;
+      }
+    });
+
+    // 3. Center gravity push back
+    allSkills.forEach(s => {
+      s.x += (width / 2 - s.x) * 0.03;
+      s.y += (height / 2 - s.y) * 0.03;
+    });
+  }
+}
 
 function allHabits() { return Object.assign({}, HABITS_DEFAULT, customCats); }
 function todayKey() { return new Date().toISOString().split('T')[0]; }
@@ -358,11 +434,6 @@ function calcStreak(logs) {
     else if (i > 0) break;
   }
   return n;
-}
-
-function getCategoryIcon(cat) {
-  const all = allHabits();
-  return all[cat] ? all[cat].icon : '⚡';
 }
 
 function populateSelects() {
@@ -626,67 +697,66 @@ document.querySelectorAll('.modal-overlay').forEach(el => {
   el.addEventListener('click', function(e) { if (e.target === this) this.classList.remove('open'); });
 });
 
-// Skills Map Generator
+// Re-engineered Dynamic Mind Map View Frame
 function buildMap() {
+  runForceLayout();
   const svg = document.getElementById('skillMap');
   svg.innerHTML = ''; 
   
+  // Render Link Pathways & Connection Dots
   allConnections.forEach(c => {
     const f = allSkills.find(s => (s.id === c.from || s.key === c.from));
     const t = allSkills.find(s => (s.id === c.to || s.key === c.to));
     if (!f || !t) return;
     
+    // Line path
     const line = document.createElementNS('http://www.w3.org/2000/svg','line');
-    line.setAttribute('x1', f.cx); line.setAttribute('y1', f.cy);
-    line.setAttribute('x2', t.cx); line.setAttribute('y2', t.cy);
-    line.setAttribute('stroke','#1e1e1e'); line.setAttribute('stroke-width','1');
+    line.setAttribute('x1', f.x); line.setAttribute('y1', f.y);
+    line.setAttribute('x2', t.x); line.setAttribute('y2', t.y);
     line.dataset.from = c.from; line.dataset.to = c.to;
-    line.classList.add('conn-line'); line.style.transition = 'all 0.25s';
+    line.className.add ? line.className.add('conn-line') : line.setAttribute('class', 'conn-line');
     svg.appendChild(line);
+
+    // Center linker indicator dot
+    const dot = document.createElementNS('http://www.w3.org/2000/svg','circle');
+    dot.setAttribute('cx', (f.x + t.x) / 2);
+    dot.setAttribute('cy', (f.y + t.y) / 2);
+    dot.setAttribute('r', 3);
+    dot.setAttribute('class', 'link-dot');
+    svg.appendChild(dot);
   });
   
-  const cg = document.createElementNS('http://www.w3.org/2000/svg','g');
-  const cc = document.createElementNS('http://www.w3.org/2000/svg','circle');
-  cc.setAttribute('cx',220); cc.setAttribute('cy',220); cc.setAttribute('r',42);
-  cc.setAttribute('fill','#141414'); cc.setAttribute('stroke','#E8C547'); cc.setAttribute('stroke-width','1.5');
-  const mkT = (y, txt) => {
-    const el = document.createElementNS('http://www.w3.org/2000/svg','text');
-    el.setAttribute('x',220); el.setAttribute('y',y); el.setAttribute('text-anchor','middle');
-    el.setAttribute('fill','#E8C547'); el.setAttribute('font-size','12');
-    el.setAttribute('font-family','Playfair Display,serif'); el.textContent = txt;
-    return el;
-  };
-  cg.appendChild(cc); cg.appendChild(mkT(214,'BUILD')); cg.appendChild(mkT(230,'ANYWAY'));
-  svg.appendChild(cg);
-  
+  // Render Dynamic Rectangular Node Badges
   allSkills.forEach(s => {
     const sid = s.id || s.key;
     const g = document.createElementNS('http://www.w3.org/2000/svg','g');
-    g.classList.add('skill-node'); g.dataset.id = sid; g.style.cursor = 'pointer';
+    g.setAttribute('class', 'skill-node');
+    g.dataset.id = sid; g.style.cursor = 'pointer'; g.style.transition = 'opacity 0.25s';
     
-    const circle = document.createElementNS('http://www.w3.org/2000/svg','circle');
-    circle.setAttribute('cx',s.cx); circle.setAttribute('cy',s.cy); circle.setAttribute('r',42);
-    circle.setAttribute('fill','#141414'); circle.setAttribute('stroke','#2a2a2a');
-    circle.setAttribute('stroke-width','1.5'); circle.style.transition = 'all 0.25s';
+    // Dynamic text measurements mockup configuration
+    const boxW = 100;
+    const boxH = 40;
+    
+    const rect = document.createElementNS('http://www.w3.org/2000/svg','rect');
+    rect.setAttribute('x', s.x - boxW/2);
+    rect.setAttribute('y', s.y - boxH/2);
+    rect.setAttribute('width', boxW);
+    rect.setAttribute('height', boxH);
+    rect.setAttribute('class', 'node-rect');
     
     const t1 = document.createElementNS('http://www.w3.org/2000/svg','text');
-    t1.setAttribute('x',s.cx); t1.setAttribute('y',s.cy - 5);
-    t1.setAttribute('text-anchor','middle'); t1.setAttribute('fill','#d0cbc0');
-    t1.setAttribute('font-size','13'); t1.setAttribute('font-family','Playfair Display,serif');
-    t1.setAttribute('font-weight','700'); t1.textContent = s.label;
+    t1.setAttribute('x', s.x); t1.setAttribute('y', s.y - 2);
+    t1.setAttribute('class', 'node-title');
+    t1.textContent = s.label;
     
     const t2 = document.createElementNS('http://www.w3.org/2000/svg','text');
-    t2.setAttribute('x',s.cx); t2.setAttribute('y',s.cy + 12);
-    t2.setAttribute('text-anchor','middle'); t2.setAttribute('fill','#555');
-    t2.setAttribute('font-size','10'); t2.setAttribute('font-family','Lora,serif');
-    t2.textContent = s.sub;
+    t2.setAttribute('x', s.x); t2.setAttribute('y', s.y + 11);
+    t2.setAttribute('class', 'node-sub');
+    t2.textContent = s.sub || '';
     
-    g.appendChild(circle); g.appendChild(t1); g.appendChild(t2);
+    g.appendChild(rect); g.appendChild(t1); g.appendChild(t2);
     
-    // Single tap to toggle visibility/highlights
     g.addEventListener('click', () => toggleSkill(sid));
-    
-    // Double tap/click to edit
     g.addEventListener('dblclick', (e) => {
       e.stopPropagation();
       openEditSkillModal(sid, s.label, s.sub || '');
@@ -700,18 +770,26 @@ function toggleSkill(id) {
   activeSkill = activeSkill === id ? null : id;
   document.querySelectorAll('.conn-line').forEach(line => {
     const active = activeSkill && (line.dataset.from === activeSkill || line.dataset.to === activeSkill);
-    line.setAttribute('stroke', active ? '#E8C547' : '#1e1e1e');
-    line.setAttribute('stroke-width', active ? '2' : '0.8');
-    line.style.opacity = (activeSkill && !active) ? '0.04' : '1';
+    line.setAttribute('stroke', active ? '#E8C547' : '#222');
+    line.setAttribute('stroke-width', active ? '2.5' : '1.5');
+    line.style.opacity = (activeSkill && !active) ? '0.05' : '1';
   });
+
+  document.querySelectorAll('.link-dot').forEach(dot => {
+    dot.style.opacity = activeSkill ? '0' : '1';
+  });
+
   document.querySelectorAll('.skill-node').forEach(g => {
     const sid = g.dataset.id;
     const isActive = activeSkill === sid;
     const connected = activeSkill && allConnections.some(c => (c.from === activeSkill && c.to === sid) || (c.to === activeSkill && c.from === sid));
     const inactive = activeSkill && !isActive && !connected;
-    g.querySelector('circle').setAttribute('fill', isActive ? '#E8C547' : connected ? '#1e1a08' : '#141414');
-    g.querySelector('circle').setAttribute('stroke', (isActive || connected) ? '#E8C547' : '#2a2a2a');
-    g.querySelectorAll('text')[0].setAttribute('fill', isActive ? '#0c0c0c' : '#d0cbc0');
+    
+    const rect = g.querySelector('.node-rect');
+    rect.setAttribute('fill', isActive ? '#E8C547' : connected ? '#1e1a08' : '#141414');
+    rect.setAttribute('stroke', (isActive || connected) ? '#E8C547' : '#2a2a2a');
+    
+    g.querySelector('.node-title').setAttribute('fill', isActive ? '#0c0c0c' : '#d0cbc0');
     g.style.opacity = inactive ? '0.15' : '1';
   });
   
@@ -729,7 +807,7 @@ function toggleSkill(id) {
       return `<div class="conn-item"><div class="conn-dot"></div>
         <div><span class="conn-other">${other ? other.label : oid}</span><span class="conn-lbl"> — ${c.label}</span></div></div>`;
     }).join('')}
-    <button class="clear-btn" onclick="toggleSkill('${activeSkill}')">Clear</button>
+    <button class="clear-btn" onclick="toggleSkill('${activeSkill}')">Clear Track</button>
   </div>`;
 }
 
@@ -738,13 +816,11 @@ function openEditSkillModal(id, label, sub) {
   document.getElementById('editSkillName').value = label;
   document.getElementById('editSkillSub').value = sub;
   
-  // Render checkboxes inside Edit modal to manage connections for this specific skill
   const picker = document.getElementById('editSkillConnectionPicker');
   picker.innerHTML = allSkills
-    .filter(s => (s.id || s.key) !== id) // Can't connect to itself
+    .filter(s => (s.id || s.key) !== id)
     .map(s => {
       const sid = s.id || s.key;
-      // See if a connection already exists
       const existingConn = allConnections.find(c => 
         (c.from === id && c.to === sid) || (c.to === id && c.from === sid)
       );
@@ -770,21 +846,37 @@ function updateSkill() {
   const sub = document.getElementById('editSkillSub').value.trim();
   if (!label || !editingSkillId) return;
   
-  // Update core skill parameters
   allSkills = allSkills.map(s => (s.id === editingSkillId || s.key === editingSkillId) ? { ...s, label, sub } : s);
   localStorage.setItem('msilas-skills', JSON.stringify(allSkills));
   
-  // Clear connections that used this skill to cleanly rebuild them from checkboxes
   allConnections = allConnections.filter(c => c.from !== editingSkillId && c.to !== editingSkillId);
 
-  // Save updated or newly checked connections
   document.querySelectorAll('#editSkillConnectionPicker .skill-conn-check:checked').forEach(cb => {
     const toId = cb.value;
-    const lbl = document.getElementById('desc_' + toId).value.trim() || `${label} meets ${toId}`;
+    const container = cb.closest('.skill-conn-item');
+    const lbl = container.querySelector('.skill-conn-desc').value.trim() || `${label} meets ${toId}`;
     allConnections.push({ from: editingSkillId, to: toId, label: lbl });
   });
   localStorage.setItem('msilas-connections', JSON.stringify(allConnections));
   
+  closeModal('editSkillModal');
+  editingSkillId = null;
+  buildMap();
+  toggleSkill(null);
+}
+
+function deleteCurrentSkill() {
+  if (!editingSkillId) return;
+  if (!confirm("Are you sure you want to completely delete this skill and all its connection links?")) return;
+
+  // Purge skill entry
+  allSkills = allSkills.filter(s => (s.id !== editingSkillId && s.key !== editingSkillId));
+  localStorage.setItem('msilas-skills', JSON.stringify(allSkills));
+
+  // Purge all associated lines inside connection lists
+  allConnections = allConnections.filter(c => c.from !== editingSkillId && c.to !== editingSkillId);
+  localStorage.setItem('msilas-connections', JSON.stringify(allConnections));
+
   closeModal('editSkillModal');
   editingSkillId = null;
   buildMap();
@@ -807,7 +899,6 @@ function openAddSkillModal() {
 }
 
 function toggleConnDesc(cb) {
-  // Find the description box next to the checkbox layout
   const container = cb.closest('.skill-conn-item');
   const d = container.querySelector('.skill-conn-desc');
   if (d) d.classList.toggle('show', cb.checked);
@@ -820,11 +911,8 @@ function saveSkill() {
   
   const key = 'skill_' + Date.now();
   
-  const angle = Math.random() * Math.PI * 2;
-  const cx = Math.round(220 + Math.cos(angle) * 150);
-  const cy = Math.round(220 + Math.sin(angle) * 150);
-  
-  allSkills.push({ id: key, key, label, sub, cx, cy });
+  // Placement handles dynamic layout positioning engine
+  allSkills.push({ id: key, key, label, sub });
   localStorage.setItem('msilas-skills', JSON.stringify(allSkills));
 
   document.querySelectorAll('#skillConnectionPicker .skill-conn-check:checked').forEach(cb => {
