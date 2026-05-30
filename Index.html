@@ -4,7 +4,6 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Michael's Productivity Dashboard</title>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.6/dist/umd/supabase.min.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&family=Lora:ital,wght@0,400;0,500;1,400&display=swap" rel="stylesheet">
 <style>
   :root { --gold:#E8C547; --bg:#0c0c0c; --bg2:#131313; --border:#222; --text:#e8e0d0; --muted:#666; --green:#4a9a4a; }
@@ -35,7 +34,6 @@
   .top-stats { display:grid; grid-template-columns:1fr 1fr 1fr; gap:10px; padding:16px 0; }
   .stat-box { background:var(--bg2); border-radius:10px; padding:14px; text-align:center; border:1px solid var(--border); }
   .stat-number { font-family:'Playfair Display',serif; font-size:28px; color:var(--gold); font-weight:700; line-height:1; }
-  .stat-number.dim { color:#333; }
   .stat-label { font-size:9px; color:#444; margin-top:4px; text-transform:uppercase; letter-spacing:1px; }
 
   /* ADD ENTRY */
@@ -125,24 +123,8 @@
   .emoji-opt { font-size:20px; cursor:pointer; padding:4px; border-radius:6px; transition:background 0.15s; }
   .emoji-opt:hover,.emoji-opt.selected { background:#2a2a2a; }
 
-  .loading-overlay { display:none; position:fixed; inset:0; background:rgba(12,12,12,0.8); z-index:200; align-items:center; justify-content:center; flex-direction:column; gap:12px; }
-  .loading-overlay.show { display:flex; }
-  .spinner { width:32px; height:32px; border:2px solid #222; border-top-color:var(--gold); border-radius:50%; animation:spin 0.7s linear infinite; }
-  @keyframes spin { to { transform:rotate(360deg); } }
-  .loading-text { font-size:12px; color:#555; letter-spacing:1px; text-transform:uppercase; }
   .sync-badge { position:fixed; bottom:16px; right:16px; background:var(--bg2); border:1px solid var(--border); border-radius:20px; padding:6px 12px; font-size:10px; color:#444; letter-spacing:1px; text-transform:uppercase; z-index:50; display:flex; align-items:center; gap:6px; }
-  .sync-dot { width:6px; height:6px; border-radius:50%; background:#444; }
-  .sync-dot.green { background:var(--green); }
-  .sync-dot.yellow { background:#886633; animation:pulse 1.5s infinite; }
-  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.3} }
-
-
-  .debug-box { display:none; margin:12px 0; background:#1a0a0a; border:1px solid #4a1a1a; border-left:3px solid #cc4444; border-radius:8px; padding:14px; }
-  .debug-box.show { display:block; }
-  .debug-title { font-size:10px; color:#cc4444; letter-spacing:1px; text-transform:uppercase; margin-bottom:8px; }
-  .debug-msg { font-size:12px; color:#aa6666; line-height:1.6; word-break:break-all; font-family:monospace; }
-  .debug-close { margin-top:10px; background:none; border:1px solid #4a1a1a; border-radius:4px; color:#666; font-size:11px; padding:4px 10px; cursor:pointer; }
-
+  .sync-dot { width:6px; height:6px; border-radius:50%; background:var(--green); }
 
   .skill-conn-item { display:flex; align-items:flex-start; gap:10px; padding:8px 0; border-bottom:1px solid var(--border); }
   .skill-conn-item:last-child { border-bottom:none; }
@@ -152,26 +134,19 @@
   .skill-conn-desc.show { display:block; }
   .skill-conn-desc:focus { border-color:var(--gold); }
 
-
   .skill-list { margin-top:12px; }
   .skill-list-item { display:flex; align-items:center; gap:10px; padding:10px 12px; background:var(--bg2); border:1px solid var(--border); border-radius:8px; margin-bottom:6px; }
   .skill-list-name { font-family:'Playfair Display',serif; font-size:13px; color:var(--text); flex:1; }
   .skill-list-sub { font-size:11px; color:var(--muted); }
-
 </style>
 </head>
 <body>
 
-<div class="loading-overlay" id="loadingOverlay">
-  <div class="spinner"></div>
-  <div class="loading-text">Syncing...</div>
-</div>
-<div class="sync-badge" id="syncBadge">
-  <div class="sync-dot green" id="syncDot"></div>
-  <span id="syncText">Synced</span>
+<div class="sync-badge">
+  <div class="sync-dot"></div>
+  <span>Local Storage Active</span>
 </div>
 
-<!-- EDIT ENTRY MODAL -->
 <div class="modal-overlay" id="editModal">
   <div class="modal">
     <div class="modal-title">Edit Entry</div>
@@ -186,8 +161,6 @@
   </div>
 </div>
 
-
-<!-- EDIT SKILL MODAL -->
 <div class="modal-overlay" id="editSkillModal">
   <div class="modal">
     <div class="modal-title">Edit Skill</div>
@@ -202,7 +175,6 @@
   </div>
 </div>
 
-<!-- ADD SKILL MODAL -->
 <div class="modal-overlay" id="addSkillModal">
   <div class="modal">
     <div class="modal-title">New Skill</div>
@@ -219,7 +191,6 @@
   </div>
 </div>
 
-<!-- ADD CATEGORY MODAL -->
 <div class="modal-overlay" id="addCatModal">
   <div class="modal">
     <div class="modal-title">New Category</div>
@@ -235,7 +206,6 @@
   </div>
 </div>
 
-<!-- PROJECT MODAL -->
 <div class="modal-overlay" id="projectModal">
   <div class="modal">
     <div class="modal-title" id="projModalTitle">New Project</div>
@@ -244,20 +214,7 @@
     <label class="modal-label">Short description (optional)</label>
     <input type="text" class="modal-input" id="projDesc" placeholder="What is this about?">
     <label class="modal-label">Linked to Category (auto-tracks days)</label>
-    <select class="modal-select" id="projCategory">
-      <option value="">— None —</option>
-      <option value="writing">✍️ Writing / Editing</option>
-      <option value="animation">🎬 Animation</option>
-      <option value="design">🎨 Design / Cover work</option>
-      <option value="coding">💻 Website / Coding</option>
-      <option value="reading">📖 Reading</option>
-      <option value="community">🤝 Community / Outreach</option>
-      <option value="instagram">📱 Instagram Post</option>
-      <option value="vibe">🎁 Vibe Gift Shop</option>
-      <option value="book_hangout">📚 Book Hangout</option>
-      <option value="epicenter">🌍 Epicenter of Life</option>
-      <option value="other">⚡ Other</option>
-    </select>
+    <select class="modal-select" id="projCategory"></select>
     <label class="modal-label">Status</label>
     <select class="modal-select" id="projStatus">
       <option value="active">🟢 Active</option>
@@ -271,33 +228,20 @@
   </div>
 </div>
 
-<!-- PAGE -->
 <div class="page-wrap">
   <div class="header">
     <div class="header-title">Michael's Productivity Dashboard</div>
     <div class="header-date" id="headerDate"></div>
   </div>
 
-  
-<div class="page-wrap">
-  <div class="debug-box" id="debugBox">
-    <div class="debug-title">Connection Error</div>
-    <div class="debug-msg" id="debugMsg"></div>
-    <button class="debug-close" onclick="document.getElementById('debugBox').classList.remove('show')">Dismiss</button>
-  </div>
-</div>
-
-<div class="top-stats">
+  <div class="top-stats">
     <div class="stat-box"><div class="stat-number" id="streakNum">0</div><div class="stat-label">Streak</div></div>
     <div class="stat-box"><div class="stat-number" id="activeDaysNum">0</div><div class="stat-label">Active Days</div></div>
     <div class="stat-box"><div class="stat-number" id="totalThingsNum">0</div><div class="stat-label">Total Things</div></div>
   </div>
 
   <div class="desktop-grid">
-
-    <!-- LEFT: Skills Map + Projects -->
     <div class="desktop-left">
-
       <div class="section" style="display:flex;align-items:center;justify-content:space-between;">
         <div class="section-label" style="flex:1;margin-bottom:0;">Skills Map</div>
         <button class="add-cat-btn" style="margin-bottom:14px;" onclick="openAddSkillModal()">+ Skill</button>
@@ -312,12 +256,9 @@
       </div>
       <ul class="projects-list" id="projectsList"></ul>
       <button class="add-proj-btn" onclick="openProjectModal(null)">+ Add Project</button>
-
     </div>
 
-    <!-- RIGHT: Today + 30 Days -->
     <div class="desktop-right">
-
       <div class="section">
         <div class="section-label">Today</div>
       </div>
@@ -336,156 +277,12 @@
         <div class="section-label">Last 30 Days</div>
       </div>
       <div class="days-grid" id="daysGrid"></div>
-
     </div>
-
   </div>
 </div>
 
-
 <script>
-// ── Supabase ──────────────────────────────────
-const SUPABASE_URL = 'https://puzogmzjhttrooofggbo.supabase.co';
-const SUPABASE_KEY = 'sb_publishable_xtT7jEdVAwrIj9450jy2Sg_alK9AuaG';
-const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY, {
-  auth: { persistSession: false, autoRefreshToken: false }
-});
-
-// Persistent anonymous user ID
-function getUserId() {
-  let id = localStorage.getItem('msilas-uid');
-  if (!id) { id = 'user_' + Math.random().toString(36).slice(2) + Date.now().toString(36); localStorage.setItem('msilas-uid', id); }
-  return id;
-}
-const USER_ID = getUserId();
-
-// Sync status
-function setSyncing() {
-  document.getElementById('syncDot').className = 'sync-dot yellow';
-  document.getElementById('syncText').textContent = 'Saving...';
-}
-function setSynced() {
-  document.getElementById('syncDot').className = 'sync-dot green';
-  document.getElementById('syncText').textContent = 'Synced';
-}
-function setError() {
-  document.getElementById('syncDot').className = 'sync-dot';
-  document.getElementById('syncText').textContent = 'Offline';
-}
-function showDebug(msg, type) {
-  const box = document.getElementById('debugBox');
-  document.getElementById('debugMsg').textContent = msg;
-  box.style.borderLeftColor = type === 'success' ? '#4a9a4a' : '#cc4444';
-  box.classList.add('show');
-}
-
-function setSyncStatus(type, msg) {
-  const dot = document.getElementById('syncDot');
-  const txt = document.getElementById('syncText');
-  if (type === 'error') { dot.className = 'sync-dot'; txt.textContent = msg || 'Error'; }
-  else if (type === 'ok') { dot.className = 'sync-dot green'; txt.textContent = msg || 'Synced'; }
-  else { dot.className = 'sync-dot yellow'; txt.textContent = msg || 'Saving...'; }
-}
-
-function showLoading() { document.getElementById('loadingOverlay').classList.add('show'); }
-function hideLoading() { document.getElementById('loadingOverlay').classList.remove('show'); }
-
-// ── Local cache (fallback) ────────────────────
-function cacheSet(key, val) { try { localStorage.setItem(key, JSON.stringify(val)); } catch {} }
-function cacheGet(key, def) { try { const v = localStorage.getItem(key); return v ? JSON.parse(v) : def; } catch { return def; } }
-
-// ── Logs ──────────────────────────────────────
-async function loadLogs() {
-  try {
-    const { data, error } = await sb.from('activity_logs').select('date,entries').eq('user_id', USER_ID);
-    if (error) { showDebug('Load logs failed: ' + error.message); throw error; }
-    const logs = {};
-    data.forEach(row => { logs[row.date] = row.entries; });
-    cacheSet('msilas-logs', logs);
-    return logs;
-  } catch {
-    setError();
-    return cacheGet('msilas-logs', {});
-  }
-}
-
-async function saveLog(date, entries) {
-  setSyncing();
-  const logs = cacheGet('msilas-logs', {});
-  logs[date] = entries;
-  cacheSet('msilas-logs', logs);
-  try {
-    const { error } = await sb.from('activity_logs').upsert(
-      { user_id: USER_ID, date, entries, updated_at: new Date().toISOString() },
-      { onConflict: 'user_id,date' }
-    );
-    if (error) { console.error('saveLog error:', error.message, error.details); showDebug('Save failed: ' + error.message + (error.hint ? ' — ' + error.hint : '')); throw error; }
-    setSynced();
-  } catch(e) { console.error('saveLog failed:', e); setError(); }
-}
-
-// ── Categories ────────────────────────────────
-async function loadCats() {
-  try {
-    const { data, error } = await sb.from('custom_categories').select('key,label,icon').eq('user_id', USER_ID);
-    if (error) throw error;
-    const cats = {};
-    data.forEach(row => { cats[row.key] = { label: row.label, icon: row.icon }; });
-    cacheSet('msilas-cats', cats);
-    return cats;
-  } catch {
-    return cacheGet('msilas-cats', {});
-  }
-}
-
-async function saveCat(key, label, icon) {
-  setSyncing();
-  const cats = cacheGet('msilas-cats', {});
-  cats[key] = { label, icon };
-  cacheSet('msilas-cats', cats);
-  try {
-    const { error } = await sb.from('custom_categories').upsert({ user_id: USER_ID, key, label, icon }, { onConflict: 'user_id,key' });
-    if (error) throw error;
-    setSynced();
-  } catch { setError(); }
-}
-
-// ── Projects ──────────────────────────────────
-async function loadProjs() {
-  try {
-    const { data, error } = await sb.from('projects').select('*').eq('user_id', USER_ID).order('created_at');
-    if (error) throw error;
-    cacheSet('msilas-projs', data);
-    return data;
-  } catch {
-    return cacheGet('msilas-projs', []);
-  }
-}
-
-async function saveProj(proj, id) {
-  setSyncing();
-  try {
-    if (id) {
-      const { error } = await sb.from('projects').update({ name: proj.name, description: proj.desc, status: proj.status }).eq('id', id).eq('user_id', USER_ID);
-      if (error) throw error;
-    } else {
-      const { error } = await sb.from('projects').insert({ user_id: USER_ID, name: proj.name, description: proj.desc, status: proj.status });
-      if (error) throw error;
-    }
-    setSynced();
-  } catch { setError(); }
-}
-
-async function deleteProj(id) {
-  setSyncing();
-  try {
-    const { error } = await sb.from('projects').delete().eq('id', id).eq('user_id', USER_ID);
-    if (error) throw error;
-    setSynced();
-  } catch { setError(); }
-}
-
-// ── Habits ────────────────────────────────────
+// ── Core Local Cache Data Defaults ────────────────────
 const HABITS_DEFAULT = {
   writing:      { label:"Writing / Editing",   icon:"✍️" },
   animation:    { label:"Animation",            icon:"🎬" },
@@ -500,9 +297,7 @@ const HABITS_DEFAULT = {
   other:        { label:"Other",                icon:"⚡" },
 };
 
-function allHabits() { return Object.assign({}, HABITS_DEFAULT, cacheGet('msilas-cats', {})); }
-
-const SKILLS = [
+const SKILLS_DEFAULT = [
   { id:"writing",   label:"Writing",    sub:"Poetry & Books",   cx:220, cy:62  },
   { id:"animation", label:"Animation",  sub:"Callipeg",         cx:330, cy:110 },
   { id:"drawing",   label:"Drawing",    sub:"Procreate",        cx:378, cy:220 },
@@ -513,7 +308,7 @@ const SKILLS = [
   { id:"reading",   label:"Reading",    sub:"Knowledge",        cx:110, cy:110 },
 ];
 
-const CONNECTIONS = [
+const CONNECTIONS_DEFAULT = [
   { from:"writing",   to:"animation",  label:"Animated stories with message" },
   { from:"writing",   to:"design",     label:"Book covers & posters" },
   { from:"writing",   to:"faith",      label:"Friend of God / Unanswered" },
@@ -529,17 +324,26 @@ const CONNECTIONS = [
 ];
 
 const EMOJI_OPTIONS = ['🎯','🔥','💡','🎙️','🙏','💪','🧘','🏃','🎵','✏️','🎤','📝','🧠','💬','🌱','⭐','🎓','🛠️','📊','💼'];
+
 let selectedEmoji = '⭐';
 let editingSkillId = null;
 let editingEntryIndex = -1;
 let editingProject = null;
 let activeSkill = null;
-let allLogs = {};
-let allProjects = [];
-let projectDayCounts = {};
-let allSkills = [];
-let allConnections = [];
 
+// Localized application engine caches
+let allLogs = JSON.parse(localStorage.getItem('msilas-logs') || '{}');
+let customCats = JSON.parse(localStorage.getItem('msilas-cats') || '{}');
+let allProjects = JSON.parse(localStorage.getItem('msilas-projs') || '[]');
+let allSkills = JSON.parse(localStorage.getItem('msilas-skills') || '[]');
+let allConnections = JSON.parse(localStorage.getItem('msilas-connections') || '[]');
+let projectLogs = JSON.parse(localStorage.getItem('msilas-project-logs') || '[]');
+
+// Setup defaults if missing
+if (allSkills.length === 0) { allSkills = [...SKILLS_DEFAULT]; localStorage.setItem('msilas-skills', JSON.stringify(allSkills)); }
+if (allConnections.length === 0) { allConnections = [...CONNECTIONS_DEFAULT]; localStorage.setItem('msilas-connections', JSON.stringify(allConnections)); }
+
+function allHabits() { return Object.assign({}, HABITS_DEFAULT, customCats); }
 function todayKey() { return new Date().toISOString().split('T')[0]; }
 function last30() {
   const days = [], t = new Date();
@@ -548,6 +352,7 @@ function last30() {
 }
 function fmtDate(s) { return new Date(s + 'T00:00:00').toLocaleDateString('en-US', { month:'short', day:'numeric' }); }
 function fmtTime(s) { return new Date(s).toLocaleTimeString('en-US', { hour:'numeric', minute:'2-digit' }); }
+
 function calcStreak(logs) {
   let n = 0, t = new Date();
   for (let i = 0; i < 365; i++) {
@@ -559,15 +364,22 @@ function calcStreak(logs) {
   return n;
 }
 
+function getCategoryIcon(cat) {
+  const all = allHabits();
+  return all[cat] ? all[cat].icon : '⚡';
+}
+
 function populateSelects() {
   const opts = Object.entries(allHabits()).map(([k,v]) => `<option value="${k}">${v.icon} ${v.label}</option>`).join('');
+  const projOpts = `<option value="">— None —</option>` + Object.entries(allHabits()).map(([k,v]) => `<option value="${k}">${v.icon} ${v.label}</option>`).join('');
+  
   ['categorySelect','modalCategory'].forEach(id => {
-    const el = document.getElementById(id);
-    if (!el) return;
-    const cur = el.value;
-    el.innerHTML = opts;
-    if (cur) el.value = cur;
+    const el = document.getElementById(id); if (!el) return;
+    const cur = el.value; el.innerHTML = opts; if (cur) el.value = cur;
   });
+  
+  const pSel = document.getElementById('projCategory');
+  if (pSel) { const cur = pSel.value; pSel.innerHTML = projOpts; if (cur) pSel.value = cur; }
 }
 
 function renderAll() {
@@ -578,6 +390,7 @@ function renderAll() {
   document.getElementById('headerDate').textContent = fmtDate(today);
   const activeDays = days.filter(d => allLogs[d] && allLogs[d].length > 0).length;
   const total = days.reduce((s, d) => s + (allLogs[d] ? allLogs[d].length : 0), 0);
+  
   document.getElementById('streakNum').textContent = calcStreak(allLogs);
   document.getElementById('activeDaysNum').textContent = activeDays;
   document.getElementById('totalThingsNum').textContent = total;
@@ -586,6 +399,7 @@ function renderAll() {
   const empty = document.getElementById('emptyState');
   list.innerHTML = '';
   empty.style.display = entries.length === 0 ? 'block' : 'none';
+  
   entries.forEach((e, i) => {
     const habit = allHabits()[e.category] || HABITS_DEFAULT.other;
     const li = document.createElement('li');
@@ -624,25 +438,30 @@ function renderProjects() {
     list.innerHTML = '<li style="color:#2a2a2a;font-size:13px;font-style:italic;padding:10px 0;">No projects yet.</li>';
     return;
   }
+  
+  // Calculate specific day counts from tracked category logs
+  const counts = {};
+  projectLogs.forEach(rl => { counts[rl.project_id] = (counts[rl.project_id] || 0) + 1; });
+
   const active = allProjects.filter(p => p.status === 'active' || p.status === 'paused');
   const completed = allProjects.filter(p => p.status === 'completed');
 
-  if (active.length > 0) {
-    active.forEach(p => list.appendChild(buildProjectItem(p)));
-  }
+  if (active.length > 0) active.forEach(p => list.appendChild(buildProjectItem(p, counts[p.id] || 0)));
   if (completed.length > 0) {
     const divider = document.createElement('li');
     divider.innerHTML = '<div style="font-size:10px;color:#333;text-transform:uppercase;letter-spacing:1px;padding:12px 0 8px;">Completed</div>';
     list.appendChild(divider);
-    completed.forEach(p => list.appendChild(buildProjectItem(p)));
+    completed.forEach(p => list.appendChild(buildProjectItem(p, counts[p.id] || 0)));
   }
 }
 
-function buildProjectItem(p) {
+function buildProjectItem(p, days) {
   const dotColor = p.status === 'active' ? '#4a9a4a' : p.status === 'completed' ? '#4a7a9a' : '#886633';
   const statusLabel = p.status === 'active' ? '● Active' : p.status === 'completed' ? '✓ Completed' : '● Paused';
   const statusClass = p.status === 'active' ? 'status-active' : p.status === 'completed' ? 'status-completed' : 'status-paused';
-  const days = projectDayCounts[p.id] || 0;
+  const habit = allHabits()[p.related_category];
+  const catString = habit ? `${habit.icon} ${habit.label}` : p.related_category;
+  
   const li = document.createElement('li');
   li.className = 'project-item';
   li.innerHTML = `
@@ -652,7 +471,7 @@ function buildProjectItem(p) {
       ${p.description ? `<div class="proj-desc">${p.description}</div>` : ''}
       <div style="display:flex;align-items:center;gap:12px;margin-top:5px;flex-wrap:wrap;">
         <div class="proj-status ${statusClass}">${statusLabel}</div>
-        ${p.related_category ? `<div style="font-size:10px;color:#555;">${getCategoryIcon(p.related_category)} ${p.related_category}</div>` : ''}
+        ${p.related_category ? `<div style="font-size:10px;color:#555;">${catString}</div>` : ''}
         ${days > 0 ? `<div style="font-size:10px;color:var(--gold);">📅 ${days} day${days !== 1 ? 's' : ''}</div>` : ''}
       </div>
     </div>
@@ -663,42 +482,41 @@ function buildProjectItem(p) {
   return li;
 }
 
-async function addEntry() {
+function addEntry() {
   const input = document.getElementById('activityInput');
   const text = input.value.trim();
   const cat = document.getElementById('categorySelect').value;
   const today = todayKey();
+  
   if (!allLogs[today]) allLogs[today] = [];
   allLogs[today].push({ text, category: cat, timestamp: new Date().toISOString() });
+  localStorage.setItem('msilas-logs', JSON.stringify(allLogs));
+  
   input.value = '';
   renderAll();
-  await saveLog(today, allLogs[today]);
-  // Auto-track: find active projects linked to this category
-  await autoTrackProjects(cat, today);
+  autoTrackProjects(cat, today);
 }
 
-async function autoTrackProjects(category, date) {
+function autoTrackProjects(category, date) {
   const matched = allProjects.filter(p => p.status === 'active' && p.related_category === category);
-  for (const p of matched) {
-    try {
-      await sb.from('project_logs').upsert(
-        { user_id: USER_ID, project_id: p.id, date },
-        { onConflict: 'user_id,project_id,date' }
-      );
-    } catch(e) { console.error('autoTrack failed:', e); }
-  }
+  matched.forEach(p => {
+    const alreadyLogged = projectLogs.some(rl => rl.project_id === p.id && rl.date === date);
+    if (!alreadyLogged) {
+      projectLogs.push({ project_id: p.id, date: date });
+    }
+  });
   if (matched.length > 0) {
-    projectDayCounts = await loadProjectDayCounts();
+    localStorage.setItem('msilas-project-logs', JSON.stringify(projectLogs));
     renderProjects();
   }
 }
 
-async function deleteEntry(i) {
+function deleteEntry(i) {
   const today = todayKey();
   if (allLogs[today]) {
     allLogs[today].splice(i, 1);
+    localStorage.setItem('msilas-logs', JSON.stringify(allLogs));
     renderAll();
-    await saveLog(today, allLogs[today]);
   }
 }
 
@@ -714,16 +532,17 @@ function openEditEntry(i) {
   setTimeout(() => document.getElementById('modalText').focus(), 100);
 }
 
-async function saveEdit() {
+function saveEdit() {
   if (editingEntryIndex < 0) return;
   const today = todayKey();
   if (!allLogs[today] || !allLogs[today][editingEntryIndex]) return;
   allLogs[today][editingEntryIndex].text = document.getElementById('modalText').value.trim();
   allLogs[today][editingEntryIndex].category = document.getElementById('modalCategory').value;
+  localStorage.setItem('msilas-logs', JSON.stringify(allLogs));
   closeModal('editModal');
   editingEntryIndex = -1;
   renderAll();
-  await saveLog(today, allLogs[today]);
+  renderProjects();
 }
 
 function openAddCatModal() {
@@ -744,21 +563,22 @@ function selectEmoji(emoji, el) {
   document.getElementById('newCatIcon').value = '';
 }
 
-async function saveNewCategory() {
+function saveNewCategory() {
   const name = document.getElementById('newCatName').value.trim();
   if (!name) { document.getElementById('newCatName').focus(); return; }
   const icon = document.getElementById('newCatIcon').value.trim() || selectedEmoji;
   const key = 'custom_' + Date.now();
+  
+  customCats[key] = { label: name, icon: icon };
+  localStorage.setItem('msilas-cats', JSON.stringify(customCats));
+  
   closeModal('addCatModal');
-  populateSelects();
-  await saveCat(key, name, icon);
-  const cats = await loadCats();
-  cacheSet('msilas-cats', cats);
   populateSelects();
 }
 
 function openProjectModal(id) {
-  editingProject = (id && id !== '-1' && id !== -1) ? id : null;
+  editingProject = id ? id : null;
+  populateSelects();
   document.getElementById('projModalTitle').textContent = id ? 'Edit Project' : 'New Project';
   if (id) {
     const p = allProjects.find(p => p.id === id);
@@ -778,33 +598,30 @@ function openProjectModal(id) {
   setTimeout(() => document.getElementById('projName').focus(), 100);
 }
 
-async function saveProject() {
+function saveProject() {
   const name = document.getElementById('projName').value.trim();
   if (!name) { document.getElementById('projName').focus(); return; }
   const status = document.getElementById('projStatus').value;
   const description = document.getElementById('projDesc').value.trim();
+  const related_category = document.getElementById('projCategory').value;
+  
+  if (editingProject) {
+    allProjects = allProjects.map(p => p.id === editingProject ? { ...p, name, description, status, related_category } : p);
+  } else {
+    allProjects.push({ id: 'proj_' + Date.now(), name, description, status, related_category, created_at: new Date().toISOString() });
+  }
+  
+  localStorage.setItem('msilas-projs', JSON.stringify(allProjects));
   closeModal('projectModal');
-  setSyncing();
-  try {
-    if (editingProject && editingProject !== '-1' && editingProject !== -1) {
-      const updates = { name, description, status };
-      if (status === 'completed') updates.completed_at = new Date().toISOString();
-      const { error } = await sb.from('projects').update(updates).eq('id', editingProject).eq('user_id', USER_ID);
-      if (error) { showDebug('Update failed: ' + error.message); throw error; }
-    } else {
-      const { error } = await sb.from('projects').insert({ user_id: USER_ID, name, description, status });
-      if (error) { showDebug('Insert failed: ' + error.message); throw error; }
-    }
-    setSynced();
-    editingProject = null;
-    allProjects = await loadProjs();
-    renderProjects();
-  } catch(e) { setError(); }
+  editingProject = null;
+  renderProjects();
 }
 
-async function handleDeleteProject(id) {
-  await deleteProj(id);
+function handleDeleteProject(id) {
   allProjects = allProjects.filter(p => p.id !== id);
+  projectLogs = projectLogs.filter(rl => rl.project_id !== id);
+  localStorage.setItem('msilas-projs', JSON.stringify(allProjects));
+  localStorage.setItem('msilas-project-logs', JSON.stringify(projectLogs));
   renderProjects();
 }
 
@@ -814,19 +631,25 @@ document.querySelectorAll('.modal-overlay').forEach(el => {
   el.addEventListener('click', function(e) { if (e.target === this) this.classList.remove('open'); });
 });
 
-// Skills map
+// Skills Map Generator
 function buildMap() {
   const svg = document.getElementById('skillMap');
-  CONNECTIONS.forEach(c => {
-    const f = SKILLS.find(s => s.id === c.from), t = SKILLS.find(s => s.id === c.to);
+  svg.innerHTML = ''; 
+  
+  allConnections.forEach(c => {
+    const f = allSkills.find(s => (s.id === c.from || s.key === c.from));
+    const t = allSkills.find(s => (s.id === c.to || s.key === c.to));
+    if (!f || !t) return;
+    
     const line = document.createElementNS('http://www.w3.org/2000/svg','line');
-    line.setAttribute('x1',f.cx); line.setAttribute('y1',f.cy);
-    line.setAttribute('x2',t.cx); line.setAttribute('y2',t.cy);
+    line.setAttribute('x1', f.cx); line.setAttribute('y1', f.cy);
+    line.setAttribute('x2', t.cx); line.setAttribute('y2', t.cy);
     line.setAttribute('stroke','#1e1e1e'); line.setAttribute('stroke-width','1');
     line.dataset.from = c.from; line.dataset.to = c.to;
     line.classList.add('conn-line'); line.style.transition = 'all 0.25s';
     svg.appendChild(line);
   });
+  
   const cg = document.createElementNS('http://www.w3.org/2000/svg','g');
   const cc = document.createElementNS('http://www.w3.org/2000/svg','circle');
   cc.setAttribute('cx',220); cc.setAttribute('cy',220); cc.setAttribute('r',42);
@@ -840,25 +663,31 @@ function buildMap() {
   };
   cg.appendChild(cc); cg.appendChild(mkT(214,'BUILD')); cg.appendChild(mkT(230,'ANYWAY'));
   svg.appendChild(cg);
-  SKILLS.forEach(s => {
+  
+  allSkills.forEach(s => {
+    const sid = s.id || s.key;
     const g = document.createElementNS('http://www.w3.org/2000/svg','g');
-    g.classList.add('skill-node'); g.dataset.id = s.id; g.style.cursor = 'pointer';
+    g.classList.add('skill-node'); g.dataset.id = sid; g.style.cursor = 'pointer';
+    
     const circle = document.createElementNS('http://www.w3.org/2000/svg','circle');
     circle.setAttribute('cx',s.cx); circle.setAttribute('cy',s.cy); circle.setAttribute('r',42);
     circle.setAttribute('fill','#141414'); circle.setAttribute('stroke','#2a2a2a');
     circle.setAttribute('stroke-width','1.5'); circle.style.transition = 'all 0.25s';
+    
     const t1 = document.createElementNS('http://www.w3.org/2000/svg','text');
     t1.setAttribute('x',s.cx); t1.setAttribute('y',s.cy - 5);
     t1.setAttribute('text-anchor','middle'); t1.setAttribute('fill','#d0cbc0');
     t1.setAttribute('font-size','13'); t1.setAttribute('font-family','Playfair Display,serif');
     t1.setAttribute('font-weight','700'); t1.textContent = s.label;
+    
     const t2 = document.createElementNS('http://www.w3.org/2000/svg','text');
     t2.setAttribute('x',s.cx); t2.setAttribute('y',s.cy + 12);
     t2.setAttribute('text-anchor','middle'); t2.setAttribute('fill','#555');
     t2.setAttribute('font-size','10'); t2.setAttribute('font-family','Lora,serif');
     t2.textContent = s.sub;
+    
     g.appendChild(circle); g.appendChild(t1); g.appendChild(t2);
-    g.addEventListener('click', () => toggleSkill(s.id));
+    g.addEventListener('click', () => toggleSkill(sid));
     svg.appendChild(g);
   });
 }
@@ -874,45 +703,52 @@ function toggleSkill(id) {
   document.querySelectorAll('.skill-node').forEach(g => {
     const sid = g.dataset.id;
     const isActive = activeSkill === sid;
-    const connected = activeSkill && CONNECTIONS.some(c => (c.from === activeSkill && c.to === sid) || (c.to === activeSkill && c.from === sid));
+    const connected = activeSkill && allConnections.some(c => (c.from === activeSkill && c.to === sid) || (c.to === activeSkill && c.from === sid));
     const inactive = activeSkill && !isActive && !connected;
     g.querySelector('circle').setAttribute('fill', isActive ? '#E8C547' : connected ? '#1e1a08' : '#141414');
     g.querySelector('circle').setAttribute('stroke', (isActive || connected) ? '#E8C547' : '#2a2a2a');
     g.querySelectorAll('text')[0].setAttribute('fill', isActive ? '#0c0c0c' : '#d0cbc0');
     g.style.opacity = inactive ? '0.15' : '1';
   });
+  
   const el = document.getElementById('connectionInfo');
   if (!activeSkill) { el.innerHTML = '<div class="map-tagline">Every skill serves the same mission.</div>'; return; }
-  const skill = SKILLS.find(s => s.id === activeSkill);
-  const conns = CONNECTIONS.filter(c => c.from === activeSkill || c.to === activeSkill);
+  
+  const skill = allSkills.find(s => (s.id === activeSkill || s.key === activeSkill));
+  const conns = allConnections.filter(c => c.from === activeSkill || c.to === activeSkill);
+  
   el.innerHTML = `<div class="conn-info">
     <div class="conn-title">${skill.label} connects to:</div>
     ${conns.map(c => {
       const oid = c.from === activeSkill ? c.to : c.from;
-      const other = SKILLS.find(s => s.id === oid);
+      const other = allSkills.find(s => (s.id === oid || s.key === oid));
       return `<div class="conn-item"><div class="conn-dot"></div>
-        <div><span class="conn-other">${other.label}</span><span class="conn-lbl"> — ${c.label}</span></div></div>`;
+        <div><span class="conn-other">${other ? other.label : oid}</span><span class="conn-lbl"> — ${c.label}</span></div></div>`;
     }).join('')}
     <button class="clear-btn" onclick="toggleSkill('${activeSkill}')">Clear</button>
   </div>`;
 }
 
-
-
 function renderSkillList() {
   const list = document.getElementById('skillList');
   if (!list) return;
-  const src = allSkills.length > 0 ? allSkills : SKILLS;
-  list.innerHTML = src.map(s => {
+  list.innerHTML = '';
+  allSkills.forEach(s => {
     const sid = s.id || s.key;
-    return '<div class="skill-list-item">' +
-      '<div style="flex:1;">' +
-        '<div class="skill-list-name">' + s.label + '</div>' +
-        '<div class="skill-list-sub">' + (s.sub || '') + '</div>' +
-      '</div>' +
-      '<button class="icon-btn" onclick="openEditSkillModal('' + sid + '','' + s.label.replace(/'/g,"\'") + '','' + (s.sub||'').replace(/'/g,"\'") + '')">✎</button>' +
-    '</div>';
-  }).join('');
+    const div = document.createElement('div');
+    div.className = 'skill-list-item';
+    div.innerHTML = `
+      <div style="flex:1;">
+        <div class="skill-list-name">${s.label}</div>
+        <div class="skill-list-sub">${s.sub || ''}</div>
+      </div>`;
+    const btn = document.createElement('button');
+    btn.className = 'icon-btn';
+    btn.textContent = '✎';
+    btn.addEventListener('click', () => openEditSkillModal(sid, s.label, s.sub || ''));
+    div.appendChild(btn);
+    list.appendChild(div);
+  });
 }
 
 function openEditSkillModal(id, label, sub) {
@@ -923,56 +759,31 @@ function openEditSkillModal(id, label, sub) {
   setTimeout(() => document.getElementById('editSkillName').focus(), 100);
 }
 
-async function updateSkill() {
+function updateSkill() {
   const label = document.getElementById('editSkillName').value.trim();
   const sub = document.getElementById('editSkillSub').value.trim();
   if (!label || !editingSkillId) return;
+  
+  allSkills = allSkills.map(s => (s.id === editingSkillId || s.key === editingSkillId) ? { ...s, label, sub } : s);
+  localStorage.setItem('msilas-skills', JSON.stringify(allSkills));
+  
   closeModal('editSkillModal');
-  setSyncing();
-  try {
-    // Try UUID update (Supabase stored skill)
-    const { error } = await sb.from('skills')
-      .update({ label, sub })
-      .eq('id', editingSkillId)
-      .eq('user_id', USER_ID);
-    if (error) throw error;
-    setSynced();
-  } catch(e) {
-    // Fallback: update local skills array
-    allSkills = allSkills.map(s => (s.id === editingSkillId || s.key === editingSkillId) ? { ...s, label, sub } : s);
-    setError();
-  }
-  // Update SKILLS array in memory too
-  const idx = SKILLS.findIndex(s => s.id === editingSkillId || s.key === editingSkillId);
-  if (idx >= 0) { SKILLS[idx].label = label; SKILLS[idx].sub = sub; }
-  // Reload from DB
-  const fresh = await loadSkills();
-  if (fresh) allSkills = fresh;
+  editingSkillId = null;
   renderSkillList();
-  const svg = document.getElementById('skillMap');
-  while (svg.firstChild) svg.removeChild(svg.firstChild);
   buildMap();
   toggleSkill(null);
-  editingSkillId = null;
-}
-
-// getCategoryIcon
-function getCategoryIcon(cat) {
-  const all = allHabits();
-  return all[cat] ? all[cat].icon : '⚡';
 }
 
 function openAddSkillModal() {
   document.getElementById('skillName').value = '';
   document.getElementById('skillSub').value = '';
   const picker = document.getElementById('skillConnectionPicker');
-  const src = allSkills.length > 0 ? allSkills : SKILLS;
-  picker.innerHTML = src.map(s => {
+  picker.innerHTML = allSkills.map(s => {
     const sid = s.id || s.key;
-    return '<div class="skill-conn-item">' +
-      '<input type="checkbox" class="skill-conn-check" id="conn_' + sid + '" value="' + sid + '" onchange="toggleConnDesc(this)">' +
-      '<div style="flex:1;"><label class="skill-conn-label" for="conn_' + sid + '">' + s.label + '</label>' +
-      '<input type="text" class="skill-conn-desc" id="desc_' + sid + '" placeholder="How do they connect?"></div></div>';
+    return `<div class="skill-conn-item">
+      <input type="checkbox" class="skill-conn-check" id="conn_${sid}" value="${sid}" onchange="toggleConnDesc(this)">
+      <div style="flex:1;"><label class="skill-conn-label" for="conn_${sid}">${s.label}</label>
+      <input type="text" class="skill-conn-desc" id="desc_${sid}" placeholder="How do they connect?"></div></div>`;
   }).join('');
   openModal('addSkillModal');
   setTimeout(() => document.getElementById('skillName').focus(), 100);
@@ -983,83 +794,42 @@ function toggleConnDesc(cb) {
   if (d) d.classList.toggle('show', cb.checked);
 }
 
-async function saveSkill() {
+function saveSkill() {
   const label = document.getElementById('skillName').value.trim();
   const sub = document.getElementById('skillSub').value.trim();
   if (!label) { document.getElementById('skillName').focus(); return; }
+  
   const key = 'skill_' + Date.now();
-  closeModal('addSkillModal');
-  let newId = key;
-  try {
-    setSyncing();
-    const { data, error } = await sb.from('skills').insert({ user_id: USER_ID, key, label, sub }).select('id').single();
-    if (error) throw error;
-    newId = data.id;
-    setSynced();
-  } catch(e) {
-    const local = JSON.parse(localStorage.getItem('msilas-local-skills') || '[]');
-    local.push({ id: key, key, label, sub });
-    localStorage.setItem('msilas-local-skills', JSON.stringify(local));
-    setError();
-  }
-  for (const cb of document.querySelectorAll('.skill-conn-check:checked')) {
+  
+  // Distribute dynamically on layout wheel coordinates
+  const angle = Math.random() * Math.PI * 2;
+  const cx = Math.round(220 + Math.cos(angle) * 150);
+  const cy = Math.round(220 + Math.sin(angle) * 150);
+  
+  allSkills.push({ id: key, key, label, sub, cx, cy });
+  localStorage.setItem('msilas-skills', JSON.stringify(allSkills));
+
+  document.querySelectorAll('.skill-conn-check:checked').forEach(cb => {
     const toId = cb.value;
-    const lbl = (document.getElementById('desc_' + toId)||{}).value || (label + ' meets ' + toId);
-    try { await sb.from('skill_connections').insert({ user_id: USER_ID, from_skill: newId, to_skill: toId, label: lbl.trim() }); } catch {}
-  }
-  const fresh = await loadSkills();
-  if (fresh) allSkills = fresh;
-  const svg = document.getElementById('skillMap');
-  while (svg.firstChild) svg.removeChild(svg.firstChild);
-  buildMap(); toggleSkill(null);
-}
+    const lbl = document.getElementById('desc_' + toId).value.trim() || `${label} meets ${toId}`;
+    allConnections.push({ from: key, to: toId, label: lbl });
+  });
+  localStorage.setItem('msilas-connections', JSON.stringify(allConnections));
 
-async function loadSkills() {
-  try {
-    const { data, error } = await sb.from('skills').select('*').eq('user_id', USER_ID);
-    if (error) throw error;
-    return data && data.length > 0 ? data : null;
-  } catch { return null; }
-}
-
-async function saveProjectOffline(proj) {
-  const local = JSON.parse(localStorage.getItem('msilas-offline-projects') || '[]');
-  const entry = { ...proj, id: 'offline_' + Date.now(), created_at: new Date().toISOString() };
-  local.push(entry); localStorage.setItem('msilas-offline-projects', JSON.stringify(local));
-  allProjects = [...allProjects, entry]; renderProjects();
-  setSyncStatus('error', 'Saved offline');
-}
-
-async function loadProjectDayCounts() {
-  try {
-    const { data, error } = await sb.from('project_logs').select('project_id,date').eq('user_id', USER_ID);
-    if (error) throw error;
-    const c = {}; data.forEach(r => { c[r.project_id] = (c[r.project_id]||0)+1; }); return c;
-  } catch { return {}; }
-}
-
-
-// ── Init ──────────────────────────────────────
-async function init() {
-  showLoading();
+  closeModal('addSkillModal');
+  renderSkillList();
   buildMap();
   toggleSkill(null);
-  try {
-    const [logs, cats, projs] = await Promise.all([loadLogs(), loadCats(), loadProjs()]);
-    allLogs = logs;
-    allProjects = projs;
-    cacheSet('msilas-cats', cats);
-    setSynced();
-  } catch {
-    allLogs = cacheGet('msilas-logs', {});
-    allProjects = cacheGet('msilas-projs', []);
-    setError();
-  }
+}
+
+// ── Init ──────────────────────────────────────
+function init() {
+  buildMap();
+  toggleSkill(null);
   populateSelects();
   renderAll();
   renderProjects();
   renderSkillList();
-  hideLoading();
 }
 
 init();
