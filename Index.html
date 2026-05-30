@@ -157,7 +157,6 @@
   <span>Mind Map Custom Layout Enabled</span>
 </div>
 
-<!-- EDIT ENTRY MODAL -->
 <div class="modal-overlay" id="editModal">
   <div class="modal">
     <div class="modal-title">Edit Entry</div>
@@ -172,7 +171,6 @@
   </div>
 </div>
 
-<!-- EDIT SKILL MODAL -->
 <div class="modal-overlay" id="editSkillModal">
   <div class="modal" style="max-height: 85vh; overflow-y: auto;">
     <div class="modal-title">Edit Skill</div>
@@ -190,7 +188,6 @@
   </div>
 </div>
 
-<!-- ADD SKILL MODAL -->
 <div class="modal-overlay" id="addSkillModal">
   <div class="modal">
     <div class="modal-title">New Skill</div>
@@ -207,7 +204,6 @@
   </div>
 </div>
 
-<!-- ADD CATEGORY MODAL -->
 <div class="modal-overlay" id="addCatModal">
   <div class="modal">
     <div class="modal-title">New Category</div>
@@ -223,7 +219,6 @@
   </div>
 </div>
 
-<!-- PROJECT MODAL -->
 <div class="modal-overlay" id="projectModal">
   <div class="modal">
     <div class="modal-title" id="projModalTitle">New Project</div>
@@ -246,7 +241,6 @@
   </div>
 </div>
 
-<!-- PAGE -->
 <div class="page-wrap">
   <div class="header">
     <div class="header-title">Michael's Productivity Dashboard</div>
@@ -260,7 +254,6 @@
   </div>
 
   <div class="desktop-grid">
-    <!-- LEFT: Interactive Mind Map View -->
     <div class="desktop-left">
       <div class="section" style="display:flex;align-items:center;justify-content:space-between;">
         <div class="section-label" style="flex:1;margin-bottom:0;">Skills Mind Map</div>
@@ -277,7 +270,6 @@
       <button class="add-proj-btn" onclick="openProjectModal(null)">+ Add Project</button>
     </div>
 
-    <!-- RIGHT: Today + 30 Days -->
     <div class="desktop-right">
       <div class="section">
         <div class="section-label">Today</div>
@@ -355,6 +347,7 @@ let activeSkill = null;
 let draggedNode = null;
 let dragOffsetX = 0;
 let dragOffsetY = 0;
+let hasDraggedSignificant = false; // Prevents drag end from firing simple tap clicks
 
 // Application engine states loaded directly from client storage array
 let allLogs = JSON.parse(localStorage.getItem('msilas-logs') || '{}');
@@ -673,8 +666,13 @@ function buildMap() {
   // Cleanly attach core workspace movement handlers for dragging
   svg.removeEventListener('mousemove', handleMapMouseMove);
   svg.removeEventListener('mouseup', handleMapMouseUp);
+  svg.removeEventListener('touchmove', handleMapMouseMove);
+  svg.removeEventListener('touchend', handleMapMouseUp);
+  
   svg.addEventListener('mousemove', handleMapMouseMove);
   svg.addEventListener('mouseup', handleMapMouseUp);
+  svg.addEventListener('touchmove', handleMapMouseMove, { passive: false });
+  svg.addEventListener('touchend', handleMapMouseUp);
   
   // Pre-calculate dynamic custom widths for all active skills to prevent text overflow
   allSkills.forEach(s => {
@@ -747,11 +745,8 @@ function buildMap() {
     g.addEventListener('touchstart', (e) => handleNodeDragStart(e, s), { passive: false });
     
     g.addEventListener('click', (e) => {
-      // Prevent highlighting paths accidentally when dragging nodes around
-      if (g.dataset.dragged === 'true') {
-        g.removeAttribute('data-dragged');
-        return;
-      }
+      // IF significant motion occurred during mouse down, do not highlight
+      if (hasDraggedSignificant) return;
       toggleSkill(sid);
     });
     
@@ -767,6 +762,8 @@ function buildMap() {
 // Drag & Drop Layout Manipulation Engine Handlers
 function handleNodeDragStart(e, node) {
   draggedNode = node;
+  hasDraggedSignificant = false; // Reset gesture flag
+  
   const clientX = e.touches ? e.touches[0].clientX : e.clientX;
   const clientY = e.touches ? e.touches[0].clientY : e.clientY;
   
@@ -781,8 +778,6 @@ function handleNodeDragStart(e, node) {
   
   const el = svg.querySelector(`g[data-id="${node.id || node.key}"]`);
   if (el) el.style.cursor = 'grabbing';
-  
-  if(e.cancelable) e.preventDefault();
 }
 
 function handleMapMouseMove(e) {
@@ -797,6 +792,11 @@ function handleMapMouseMove(e) {
   let newX = clientX - rect.left - dragOffsetX;
   let newY = clientY - rect.top - dragOffsetY;
   
+  // Calculate if mouse has actually traveled past a micro-jitter threshold
+  if (Math.abs(newX - draggedNode.x) > 2 || Math.abs(newY - draggedNode.y) > 2) {
+    hasDraggedSignificant = true;
+  }
+  
   // Stay bound safely inside map viewport limits
   newX = Math.max(draggedNode.boxW / 2 + 10, Math.min(rect.width - draggedNode.boxW / 2 - 10, newX));
   newY = Math.max(draggedNode.boxH / 2 + 10, Math.min(rect.height - draggedNode.boxH / 2 - 10, newY));
@@ -804,11 +804,10 @@ function handleMapMouseMove(e) {
   draggedNode.x = newX;
   draggedNode.y = newY;
   
-  const nodeEl = svg.querySelector(`g[data-id="${draggedNode.id || draggedNode.key}"]`);
-  if (nodeEl) nodeEl.setAttribute('data-dragged', 'true');
-  
   // Re-link updates live during runtime arrangements
   updateLivePositions();
+  
+  if(e.cancelable) e.preventDefault();
 }
 
 function handleMapMouseUp() {
@@ -820,6 +819,9 @@ function handleMapMouseUp() {
   // Save position adjustments immediately inside structural application state cache
   localStorage.setItem('msilas-skills', JSON.stringify(allSkills));
   draggedNode = null;
+  
+  // Use a slight timeout delay to unlock single clicks so drag releases do not trigger highlights
+  setTimeout(() => { hasDraggedSignificant = false; }, 50);
 }
 
 // Live link layout redraw engine updates lines during drag interactions
