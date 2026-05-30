@@ -152,6 +152,12 @@
   .skill-conn-desc.show { display:block; }
   .skill-conn-desc:focus { border-color:var(--gold); }
 
+
+  .skill-list { margin-top:12px; }
+  .skill-list-item { display:flex; align-items:center; gap:10px; padding:10px 12px; background:var(--bg2); border:1px solid var(--border); border-radius:8px; margin-bottom:6px; }
+  .skill-list-name { font-family:'Playfair Display',serif; font-size:13px; color:var(--text); flex:1; }
+  .skill-list-sub { font-size:11px; color:var(--muted); }
+
 </style>
 </head>
 <body>
@@ -180,6 +186,21 @@
   </div>
 </div>
 
+
+<!-- EDIT SKILL MODAL -->
+<div class="modal-overlay" id="editSkillModal">
+  <div class="modal">
+    <div class="modal-title">Edit Skill</div>
+    <label class="modal-label">Skill name</label>
+    <input type="text" class="modal-input" id="editSkillName" placeholder="Skill name">
+    <label class="modal-label">Subtitle</label>
+    <input type="text" class="modal-input" id="editSkillSub" placeholder="e.g. Callipeg, Procreate...">
+    <div class="modal-btns">
+      <button class="modal-cancel" onclick="closeModal('editSkillModal')">Cancel</button>
+      <button class="modal-save" onclick="updateSkill()">Save</button>
+    </div>
+  </div>
+</div>
 
 <!-- ADD SKILL MODAL -->
 <div class="modal-overlay" id="addSkillModal">
@@ -284,6 +305,7 @@
       <div class="map-hint">Tap a skill to see how it connects</div>
       <svg id="skillMap" viewBox="0 0 440 440"></svg>
       <div id="connectionInfo"></div>
+      <div class="skill-list" id="skillList"></div>
 
       <div class="section" style="margin-top:16px;">
         <div class="section-label">Current Projects</div>
@@ -509,6 +531,7 @@ const CONNECTIONS = [
 
 const EMOJI_OPTIONS = ['🎯','🔥','💡','🎙️','🙏','💪','🧘','🏃','🎵','✏️','🎤','📝','🧠','💬','🌱','⭐','🎓','🛠️','📊','💼'];
 let selectedEmoji = '⭐';
+let editingSkillId = null;
 let editingEntryIndex = -1;
 let editingProject = null;
 let activeSkill = null;
@@ -876,6 +899,64 @@ function toggleSkill(id) {
 }
 
 
+
+function renderSkillList() {
+  const list = document.getElementById('skillList');
+  if (!list) return;
+  const src = allSkills.length > 0 ? allSkills : SKILLS;
+  list.innerHTML = src.map(s => {
+    const sid = s.id || s.key;
+    return '<div class="skill-list-item">' +
+      '<div style="flex:1;">' +
+        '<div class="skill-list-name">' + s.label + '</div>' +
+        '<div class="skill-list-sub">' + (s.sub || '') + '</div>' +
+      '</div>' +
+      '<button class="icon-btn" onclick="openEditSkillModal('' + sid + '','' + s.label.replace(/'/g,"\'") + '','' + (s.sub||'').replace(/'/g,"\'") + '')">✎</button>' +
+    '</div>';
+  }).join('');
+}
+
+function openEditSkillModal(id, label, sub) {
+  editingSkillId = id;
+  document.getElementById('editSkillName').value = label;
+  document.getElementById('editSkillSub').value = sub;
+  openModal('editSkillModal');
+  setTimeout(() => document.getElementById('editSkillName').focus(), 100);
+}
+
+async function updateSkill() {
+  const label = document.getElementById('editSkillName').value.trim();
+  const sub = document.getElementById('editSkillSub').value.trim();
+  if (!label || !editingSkillId) return;
+  closeModal('editSkillModal');
+  setSyncing();
+  try {
+    // Try UUID update (Supabase stored skill)
+    const { error } = await sb.from('skills')
+      .update({ label, sub })
+      .eq('id', editingSkillId)
+      .eq('user_id', USER_ID);
+    if (error) throw error;
+    setSynced();
+  } catch(e) {
+    // Fallback: update local skills array
+    allSkills = allSkills.map(s => (s.id === editingSkillId || s.key === editingSkillId) ? { ...s, label, sub } : s);
+    setError();
+  }
+  // Update SKILLS array in memory too
+  const idx = SKILLS.findIndex(s => s.id === editingSkillId || s.key === editingSkillId);
+  if (idx >= 0) { SKILLS[idx].label = label; SKILLS[idx].sub = sub; }
+  // Reload from DB
+  const fresh = await loadSkills();
+  if (fresh) allSkills = fresh;
+  renderSkillList();
+  const svg = document.getElementById('skillMap');
+  while (svg.firstChild) svg.removeChild(svg.firstChild);
+  buildMap();
+  toggleSkill(null);
+  editingSkillId = null;
+}
+
 // getCategoryIcon
 function getCategoryIcon(cat) {
   const all = allHabits();
@@ -978,6 +1059,7 @@ async function init() {
   populateSelects();
   renderAll();
   renderProjects();
+  renderSkillList();
   hideLoading();
 }
 
