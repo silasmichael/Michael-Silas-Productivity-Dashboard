@@ -90,6 +90,11 @@
   .proj-btns { display:flex; flex-direction:column; gap:4px; flex-shrink:0; }
   .add-proj-btn { width:100%; background:none; border:1px dashed #2a2a2a; border-radius:8px; padding:12px; color:#444; font-size:12px; cursor:pointer; font-family:'Lora',serif; letter-spacing:0.5px; transition:color 0.2s,border-color 0.2s; margin-top:4px; }
   .add-proj-btn:hover { color:var(--gold); border-color:var(--gold); }
+  
+  /* Project Tags */
+  .proj-tags-container { display:flex; flex-wrap:wrap; gap:6px; margin-top:8px; }
+  .proj-tag { display:inline-flex; align-items:center; background:#1a1a1a; border:1px solid #333; border-radius:4px; padding:2px 6px; font-size:9.5px; color:#aaa; font-family:'Lora',serif; }
+  .proj-tag.skill-tag { border-color:#443a1a; color:#c4a84d; background:#1c1808; }
 
   /* SKILLS MAP */
   #skillMap { width:100%; height:460px; background:#080808; border:1px solid var(--border); border-radius:12px; display:block; overflow:hidden; user-select:none; }
@@ -104,10 +109,10 @@
   .clear-btn:hover { color:var(--gold); border-color:var(--gold); }
   .map-tagline { text-align:center; color:#222; font-size:11px; font-style:italic; margin-top:8px; }
 
-  /* MODALS */
+  /* MODALS & CHECKLISTS */
   .modal-overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.88); z-index:100; align-items:center; justify-content:center; padding:20px; }
   .modal-overlay.open { display:flex; }
-  .modal { background:#161616; border:1px solid #2a2a2a; border-top:3px solid var(--gold); border-radius:12px; padding:22px; width:100%; max-width:400px; animation:modalIn 0.2s ease; }
+  .modal { background:#161616; border:1px solid #2a2a2a; border-top:3px solid var(--gold); border-radius:12px; padding:22px; width:100%; max-width:400px; max-height:90vh; overflow-y:auto; animation:modalIn 0.2s ease; }
   @keyframes modalIn { from{opacity:0;transform:translateY(10px)} to{opacity:1;transform:translateY(0)} }
   .modal-title { font-family:'Playfair Display',serif; font-size:17px; color:var(--gold); margin-bottom:18px; }
   .modal-label { font-size:11px; color:#555; text-transform:uppercase; letter-spacing:1px; margin-bottom:6px; display:block; }
@@ -115,6 +120,13 @@
   .modal-input:focus { border-color:var(--gold); }
   .modal-select { width:100%; background:var(--bg2); border:1px solid var(--border); border-radius:8px; padding:11px 14px; color:var(--text); font-size:14px; font-family:'Lora',serif; outline:none; margin-bottom:18px; cursor:pointer; appearance:none; background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%23666' stroke-width='1.5' fill='none'/%3E%3C/svg%3E"); background-repeat:no-repeat; background-position:right 14px center; }
   .modal-select option { background:#1a1a1a; }
+  
+  .multi-select-container { background:var(--bg2); border:1px solid var(--border); border-radius:8px; padding:8px 12px; margin-bottom:14px; max-height:130px; overflow-y:auto; }
+  .multi-select-item { display:flex; align-items:center; gap:10px; padding:7px 0; border-bottom:1px solid #1f1f1f; }
+  .multi-select-item:last-child { border-bottom:none; }
+  .multi-select-check { width:15px; height:15px; accent-color:var(--gold); cursor:pointer; flex-shrink:0; }
+  .multi-select-label { font-size:13px; color:var(--text); cursor:pointer; flex:1; font-family:'Lora',serif; }
+
   .modal-btns { display:flex; gap:10px; }
   .modal-save { flex:1; background:var(--gold); border:none; border-radius:8px; padding:12px; color:#0c0c0c; font-size:14px; font-family:'Playfair Display',serif; font-weight:700; cursor:pointer; }
   .modal-save:hover { background:#f0d060; }
@@ -122,6 +134,7 @@
   .modal-cancel:hover { color:var(--text); border-color:#555; }
   .modal-delete { background:#4a1515; border:1px solid #6a2525; color:#ffaaaa; border-radius:8px; padding:12px 16px; font-size:13px; cursor:pointer; font-family:'Lora',serif; margin-bottom:18px; width:100%; transition:background 0.2s; text-align:center; }
   .modal-delete:hover { background:#6a2525; }
+  
   .emoji-picker { display:flex; flex-wrap:wrap; gap:7px; background:var(--bg2); border:1px solid var(--border); border-radius:8px; padding:10px; margin-bottom:4px; }
   .emoji-opt { font-size:20px; cursor:pointer; padding:4px; border-radius:6px; transition:background 0.15s; }
   .emoji-opt:hover,.emoji-opt.selected { background:#2a2a2a; }
@@ -141,7 +154,7 @@
   .skill-conn-desc.show { display:block; }
   .skill-conn-desc:focus { border-color:var(--gold); }
   
-  /* SVG MIND MAP BADGE STYLING */
+  /* SVG MIND MAP */
   .node-rect { fill:#141414; stroke:#2a2a2a; stroke-width:1.5; rx:8; ry:8; transition: fill 0.2s, stroke 0.2s; }
   .skill-node:hover .node-rect { stroke:#555; }
   .node-title { fill:#d0cbc0; font-size:13px; font-family:'Playfair Display',serif; font-weight:700; text-anchor:middle; pointer-events:none; }
@@ -176,7 +189,7 @@
 </div>
 
 <div class="modal-overlay" id="editSkillModal">
-  <div class="modal" style="max-height: 85vh; overflow-y: auto;">
+  <div class="modal">
     <div class="modal-title">Edit Skill</div>
     <button class="modal-delete" onclick="deleteCurrentSkill()">⚠️ Delete This Skill</button>
     <label class="modal-label">Skill name</label>
@@ -184,7 +197,7 @@
     <label class="modal-label">Subtitle</label>
     <input type="text" class="modal-input" id="editSkillSub" placeholder="e.g. Callipeg, Procreate...">
     <label class="modal-label">Modify Skill Connections</label>
-    <div id="editSkillConnectionPicker" style="background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:12px;margin-bottom:14px;max-height:180px;overflow-y:auto;"></div>
+    <div id="editSkillConnectionPicker" class="multi-select-container" style="max-height:180px;"></div>
     <div class="modal-btns">
       <button class="modal-cancel" onclick="closeModal('editSkillModal')">Cancel</button>
       <button class="modal-save" onclick="updateSkill()">Save</button>
@@ -200,7 +213,7 @@
     <label class="modal-label">Subtitle</label>
     <input type="text" class="modal-input" id="skillSub" placeholder="e.g. Canon R50, Guitar...">
     <label class="modal-label">Connect to existing skills</label>
-    <div id="skillConnectionPicker" style="background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:12px;margin-bottom:14px;max-height:200px;overflow-y:auto;"></div>
+    <div id="skillConnectionPicker" class="multi-select-container" style="max-height:200px;"></div>
     <div class="modal-btns">
       <button class="modal-cancel" onclick="closeModal('addSkillModal')">Cancel</button>
       <button class="modal-save" onclick="saveSkill()">Add Skill</button>
@@ -228,16 +241,23 @@
     <div class="modal-title" id="projModalTitle">New Project</div>
     <label class="modal-label">Project name</label>
     <input type="text" class="modal-input" id="projName" placeholder="e.g. Babel Animation, Unanswered Book...">
+    
     <label class="modal-label">Short description (optional)</label>
     <input type="text" class="modal-input" id="projDesc" placeholder="What is this about?">
-    <label class="modal-label">Linked to Category (auto-tracks days)</label>
-    <select class="modal-select" id="projCategory"></select>
+    
+    <label class="modal-label">Related Categories (auto-tracks days)</label>
+    <div id="projCategoryPicker" class="multi-select-container"></div>
+    
+    <label class="modal-label">Related Skills</label>
+    <div id="projSkillPicker" class="multi-select-container"></div>
+    
     <label class="modal-label">Status</label>
     <select class="modal-select" id="projStatus">
       <option value="active">🟢 Active</option>
       <option value="paused">🟡 Paused</option>
       <option value="completed">✅ Completed</option>
     </select>
+    
     <div class="modal-btns">
       <button class="modal-cancel" onclick="closeModal('projectModal')">Cancel</button>
       <button class="modal-save" onclick="saveProject()">Save</button>
@@ -328,9 +348,6 @@ async function syncToSupabase(table, payload, conflictCol) {
     return false;
   }
 }
-
-// AI table is synced automatically by DB triggers — no JS needed
-function syncToAiProductivityTable() { /* handled by DB trigger */ }
 
 // ── Default Categories & Mind Map Objects ────────────────────
 const HABITS_DEFAULT = {
@@ -432,16 +449,36 @@ function estimateTextWidth(text, fontClass) {
 }
 
 function populateSelects() {
-  const opts = Object.entries(allHabits()).map(([k,v]) => `<option value="${k}">${v.icon} ${v.label}</option>`).join('');
-  const projOpts = `<option value="">— None —</option>` + Object.entries(allHabits()).map(([k,v]) => `<option value="${k}">${v.icon} ${v.label}</option>`).join('');
+  const habits = allHabits();
+  const opts = Object.entries(habits).map(([k,v]) => `<option value="${k}">${v.icon} ${v.label}</option>`).join('');
   
   ['categorySelect','modalCategory'].forEach(id => {
     const el = document.getElementById(id); if (!el) return;
     const cur = el.value; el.innerHTML = opts; if (cur) el.value = cur;
   });
-  
-  const pSel = document.getElementById('projCategory');
-  if (pSel) { const cur = pSel.value; pSel.innerHTML = projOpts; if (cur) pSel.value = cur; }
+
+  const pCatPicker = document.getElementById('projCategoryPicker');
+  if (pCatPicker) {
+    pCatPicker.innerHTML = Object.entries(habits).map(([k,v]) => `
+      <div class="multi-select-item">
+        <input type="checkbox" class="multi-select-check proj-cat-check" id="pcat_${k}" value="${k}">
+        <label class="multi-select-label" for="pcat_${k}">${v.icon} ${v.label}</label>
+      </div>
+    `).join('');
+  }
+
+  const pSkillPicker = document.getElementById('projSkillPicker');
+  if (pSkillPicker) {
+    pSkillPicker.innerHTML = allSkills.map(s => {
+      const sid = s.id || s.key;
+      return `
+        <div class="multi-select-item">
+          <input type="checkbox" class="multi-select-check proj-skill-check" id="pskill_${sid}" value="${sid}">
+          <label class="multi-select-label" for="pskill_${sid}">${s.label}</label>
+        </div>
+      `;
+    }).join('');
+  }
 }
 
 function renderAll() {
@@ -517,10 +554,23 @@ function buildProjectItem(p) {
   const dotColor = p.status === 'active' ? '#4a9a4a' : p.status === 'completed' ? '#4a7a9a' : '#886633';
   const statusLabel = p.status === 'active' ? '● Active' : p.status === 'completed' ? '✓ Completed' : '● Paused';
   const statusClass = p.status === 'active' ? 'status-active' : p.status === 'completed' ? 'status-completed' : 'status-paused';
-  const habit = allHabits()[p.related_category];
-  const catString = habit ? `${habit.icon} ${habit.label}` : p.related_category;
   const daysCount = p.logged_dates ? p.logged_dates.length : 0;
+  const habits = allHabits();
   
+  // Create Tags HTML
+  let tagsHTML = '';
+  const cats = p.related_categories || (p.related_category ? [p.related_category] : []);
+  cats.forEach(c => {
+    const h = habits[c];
+    if (h) tagsHTML += `<span class="proj-tag">${h.icon} ${h.label}</span>`;
+  });
+  
+  const skills = p.related_skills || [];
+  skills.forEach(sId => {
+    const sk = allSkills.find(s => (s.id === sId || s.key === sId));
+    if (sk) tagsHTML += `<span class="proj-tag skill-tag">${sk.label}</span>`;
+  });
+
   const li = document.createElement('li');
   li.className = 'project-item';
   li.innerHTML = `
@@ -528,10 +578,12 @@ function buildProjectItem(p) {
     <div class="proj-content">
       <div class="proj-name">${p.name}</div>
       ${p.description ? `<div class="proj-desc">${p.description}</div>` : ''}
-      <div style="display:flex;align-items:center;gap:12px;margin-top:5px;flex-wrap:wrap;">
+      
+      ${tagsHTML ? `<div class="proj-tags-container">${tagsHTML}</div>` : ''}
+      
+      <div style="display:flex;align-items:center;gap:12px;margin-top:7px;flex-wrap:wrap;">
         <div class="proj-status ${statusClass}">${statusLabel}</div>
-        ${p.related_category ? `<div style="font-size:10px;color:#555;">${catString}</div>` : ''}
-        ${daysCount > 0 ? `<div style="font-size:10px;color:var(--gold);">📅 ${daysCount} day${daysCount !== 1 ? 's' : ''}</div>` : ''}
+        ${daysCount > 0 ? `<div style="font-size:10px;color:var(--gold);margin-top:5px;">📅 ${daysCount} day${daysCount !== 1 ? 's' : ''}</div>` : ''}
       </div>
     </div>
     <div class="proj-btns">
@@ -560,7 +612,8 @@ function autoTrackProjects(category, date) {
   let updatedProjects = [];
 
   allProjects = allProjects.map(p => {
-    if (p.status === 'active' && p.related_category === category) {
+    const isCategoryLinked = (p.related_categories && p.related_categories.includes(category)) || p.related_category === category;
+    if (p.status === 'active' && isCategoryLinked) {
       if (!p.logged_dates) p.logged_dates = [];
       if (!p.logged_dates.includes(date)) {
         const updatedProj = { ...p, logged_dates: [...p.logged_dates, date] };
@@ -582,12 +635,13 @@ function autoTrackProjects(category, date) {
         name: p.name,
         description: p.description || '',
         status: p.status,
-        related_category: p.related_category || '',
+        related_categories: p.related_categories || [],
+        related_skills: p.related_skills || [],
         logged_dates: p.logged_dates,
         created_at: p.created_at
       }, 'id');
     });
-    }
+  }
 }
 
 async function deleteEntry(i) {
@@ -597,7 +651,7 @@ async function deleteEntry(i) {
     saveLocal('msilas-logs', allLogs);
     renderAll();
     await syncToSupabase('activity_logs', { user_id: USER_ID, date: today, entries: allLogs[today], updated_at: new Date().toISOString() }, 'user_id,date');
-    }
+  }
 }
 
 function openEditEntry(i) {
@@ -661,19 +715,27 @@ function openProjectModal(id) {
   editingProject = id ? id : null;
   populateSelects();
   document.getElementById('projModalTitle').textContent = id ? 'Edit Project' : 'New Project';
+  
   if (id) {
     const p = allProjects.find(item => item.id === id);
     if (p) {
       document.getElementById('projName').value = p.name || '';
       document.getElementById('projDesc').value = p.description || '';
       document.getElementById('projStatus').value = p.status || 'active';
-      document.getElementById('projCategory').value = p.related_category || '';
+      
+      const cats = p.related_categories || (p.related_category ? [p.related_category] : []);
+      const skills = p.related_skills || [];
+      
+      document.querySelectorAll('.proj-cat-check').forEach(cb => cb.checked = cats.includes(cb.value));
+      document.querySelectorAll('.proj-skill-check').forEach(cb => cb.checked = skills.includes(cb.value));
     }
   } else {
     document.getElementById('projName').value = '';
     document.getElementById('projDesc').value = '';
     document.getElementById('projStatus').value = 'active';
-    document.getElementById('projCategory').value = '';
+    
+    document.querySelectorAll('.proj-cat-check').forEach(cb => cb.checked = false);
+    document.querySelectorAll('.proj-skill-check').forEach(cb => cb.checked = false);
   }
   openModal('projectModal');
   setTimeout(() => document.getElementById('projName').focus(), 100);
@@ -684,14 +746,16 @@ async function saveProject() {
   if (!name) { document.getElementById('projName').focus(); return; }
   const status = document.getElementById('projStatus').value;
   const description = document.getElementById('projDesc').value.trim();
-  const related_category = document.getElementById('projCategory').value;
+  
+  const related_categories = Array.from(document.querySelectorAll('.proj-cat-check:checked')).map(cb => cb.value);
+  const related_skills = Array.from(document.querySelectorAll('.proj-skill-check:checked')).map(cb => cb.value);
 
   if (editingProject) {
-    // Edit — use UPDATE exactly like updateSkill uses upsert
     allProjects = allProjects.map(p => p.id === editingProject
-      ? { ...p, name, description, status, related_category }
+      ? { ...p, name, description, status, related_categories, related_skills }
       : p);
     saveLocal('msilas-projs', allProjects);
+    
     const proj = allProjects.find(p => p.id === editingProject);
     await syncToSupabase('projects', {
       id: proj.id,
@@ -699,17 +763,16 @@ async function saveProject() {
       name,
       description: description || '',
       status,
-      related_category: related_category || '',
+      related_categories,
+      related_skills,
       logged_dates: proj.logged_dates || []
     }, 'id');
 
   } else {
-    // New — generate UUID on frontend, then upsert like activity_logs does
     const newId = (typeof crypto !== 'undefined' && crypto.randomUUID)
       ? crypto.randomUUID()
       : 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => {
-          const r = Math.random() * 16 | 0;
-          return (c === 'x' ? r : (r & 0x3 | 0x8)).toString(16);
+          const r = Math.random() * 16 | 0; return (c === 'x' ? r : (r & 0x3 | 0x8)).toString(16);
         });
 
     const newProj = {
@@ -718,7 +781,8 @@ async function saveProject() {
       name,
       description: description || '',
       status,
-      related_category: related_category || '',
+      related_categories,
+      related_skills,
       logged_dates: [],
       created_at: new Date().toISOString()
     };
@@ -1134,7 +1198,8 @@ async function init() {
       allProjects = projData.map(p => ({ 
         ...p, 
         description: p.description || '', 
-        related_category: p.related_category || '',
+        related_categories: p.related_categories || [],
+        related_skills: p.related_skills || [],
         logged_dates: p.logged_dates || []
       }));
       saveLocal('msilas-projs', allProjects);
