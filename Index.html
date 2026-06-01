@@ -573,9 +573,6 @@ function autoTrackProjects(category, date) {
     renderProjects();
     
     updatedProjects.forEach(p => {
-      // Fix: Serialize array to JSON format or Postgres text array syntax explicitly
-      const datePayload = Array.isArray(p.logged_dates) ? JSON.stringify(p.logged_dates) : '[]';
-      
       syncToSupabase('projects', {
         id: p.id,
         user_id: USER_ID,
@@ -583,9 +580,9 @@ function autoTrackProjects(category, date) {
         description: p.description || '',
         status: p.status,
         related_category: p.related_category || '',
-        logged_dates: datePayload,
+        logged_dates: p.logged_dates,
         created_at: p.created_at
-      }, 'id,user_id'); // Match target rule constraint tracking parameters
+      }, 'id');
     });
   }
 }
@@ -679,7 +676,7 @@ function openProjectModal(id) {
   setTimeout(() => document.getElementById('projName').focus(), 100);
 }
 
-function saveProject() {
+async function saveProject() {
   const name = document.getElementById('projName').value.trim();
   if (!name) { document.getElementById('projName').focus(); return; }
   const status = document.getElementById('projStatus').value;
@@ -692,7 +689,16 @@ function saveProject() {
     allProjects = allProjects.map(p => p.id === editingProject ? { ...p, name, description, status, related_category } : p);
     projToSync = allProjects.find(p => p.id === editingProject);
   } else {
-    const newProj = { id: 'proj_' + Date.now(), name, description, status, related_category, logged_dates: [], created_at: new Date().toISOString() };
+    // Ensure logged_dates is initialized as an empty array
+    const newProj = { 
+        id: 'proj_' + Date.now(), 
+        name, 
+        description, 
+        status, 
+        related_category, 
+        logged_dates: [], 
+        created_at: new Date().toISOString() 
+    };
     allProjects.push(newProj);
     projToSync = newProj;
   }
@@ -700,19 +706,22 @@ function saveProject() {
   saveLocal('msilas-projs', allProjects);
   
   if (projToSync) {
-    // Fix: Strict fallback data validation layout mapping matching exact targets rule parameters
-    const mappedDates = Array.isArray(projToSync.logged_dates) ? JSON.stringify(projToSync.logged_dates) : '[]';
-    
-    syncToSupabase('projects', { 
+    // Explicitly structure the object for the database to prevent schema conflicts
+    const dbPayload = { 
       id: projToSync.id,
       user_id: USER_ID, 
       name: projToSync.name,
       description: projToSync.description || '',
       status: projToSync.status,
       related_category: projToSync.related_category || '',
-      logged_dates: mappedDates, 
+      logged_dates: Array.isArray(projToSync.logged_dates) ? projToSync.logged_dates : [],
       created_at: projToSync.created_at
-    }, 'id,user_id'); 
+    };
+
+    const success = await syncToSupabase('projects', dbPayload, 'id');
+    if (!success) {
+        console.error("Project sync failed: Ensure the 'projects' table has a 'logged_dates' column of type jsonb or text array.");
+    }
   }
 
   closeModal('projectModal');
@@ -723,15 +732,7 @@ function saveProject() {
 async function handleDeleteProject(id) {
   allProjects = allProjects.filter(p => p.id !== id);
   saveLocal('msilas-projs', allProjects);
-  try { 
-    setSyncing();
-    const { error } = await sb.from('projects').delete().eq('id', id).eq('user_id', USER_ID); 
-    if (error) throw error;
-    setSynced();
-  } catch(e) { 
-    console.error("Project deletion pipeline failure:", e); 
-    setOffline();
-  }
+  try { await sb.from('projects').delete().eq('id', id).eq('user_id', USER_ID); } catch(e) { console.error(e); }
   renderProjects();
 }
 
@@ -1127,19 +1128,12 @@ async function init() {
 
     const { data: projData } = await sb.from('projects').select('*').eq('user_id', USER_ID).order('created_at');
     if (projData && projData.length > 0) {
-      allProjects = projData.map(p => {
-        let dates = p.logged_dates;
-        // Fix: Parse JSON strings from database columns cleanly into runtime structures
-        if (typeof dates === 'string') {
-          try { dates = JSON.parse(dates); } catch(e) { dates = []; }
-        }
-        return { 
-          ...p, 
-          description: p.description || '', 
-          related_category: p.related_category || '',
-          logged_dates: Array.isArray(dates) ? dates : []
-        };
-      });
+      allProjects = projData.map(p => ({ 
+        ...p, 
+        description: p.description || '', 
+        related_category: p.related_category || '',
+        logged_dates: p.logged_dates || []
+      }));
       saveLocal('msilas-projs', allProjects);
     }
 
