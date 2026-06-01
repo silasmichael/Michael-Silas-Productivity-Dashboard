@@ -317,8 +317,7 @@ function saveLocal(key, data) { localStorage.setItem(key, JSON.stringify(data));
 async function syncToSupabase(table, payload, conflictCol) {
   setSyncing();
   try {
-    // FIX: Format single conflict text constraint string arguments into proper client match objects to bypass API drops
-    const options = conflictCol ? (conflictCol.includes(',') ? { onConflict: conflictCol } : { onConflict: conflictCol }) : {};
+    const options = conflictCol ? { onConflict: conflictCol } : {};
     const { error } = await sb.from(table).upsert(payload, options);
     if (error) throw error;
     setSynced();
@@ -583,7 +582,7 @@ function autoTrackProjects(category, date) {
         related_category: p.related_category || '',
         logged_dates: p.logged_dates,
         created_at: p.created_at
-      }, 'id');
+      }, 'id,user_id');
     });
   }
 }
@@ -707,7 +706,7 @@ function saveProject() {
       related_category: projToSync.related_category || '',
       logged_dates: projToSync.logged_dates || [],
       created_at: projToSync.created_at
-    }, 'id');
+    }, 'id,user_id');
   }
 
   closeModal('projectModal');
@@ -749,7 +748,6 @@ function buildMap() {
     s.boxW = Math.max(titleW, subW) + 28; 
     s.boxH = s.sub ? 42 : 32;
     
-    // Safety fallback only triggers if coordinate fields are absolutely blank
     if (s.x === undefined || s.x === null) s.x = 220 + (Math.random() - 0.5) * 60;
     if (s.y === undefined || s.y === null) s.y = 220 + (Math.random() - 0.5) * 60;
   });
@@ -876,17 +874,6 @@ function handleMapMouseUp() {
   if (el) el.style.cursor = 'grab';
   
   saveLocal('msilas-skills', allSkills);
-  
-  // FIX: Push up live map coordinate points alongside updates to stop position groupings
-  syncToSupabase('skills', { 
-    user_id: USER_ID, 
-    key: draggedNode.id || draggedNode.key, 
-    label: draggedNode.label, 
-    sub: draggedNode.sub || '',
-    x: draggedNode.x,
-    y: draggedNode.y
-  }, 'user_id,key');
-
   draggedNode = null;
   setTimeout(() => { hasDraggedSignificant = false; }, 50);
 }
@@ -1016,15 +1003,9 @@ async function updateSkill() {
   const sub = document.getElementById('editSkillSub').value.trim();
   if (!label || !editingSkillId) return;
   
-  const targetSkill = allSkills.find(s => (s.id === editingSkillId || s.key === editingSkillId));
-  const currentX = targetSkill ? targetSkill.x : 220;
-  const currentY = targetSkill ? targetSkill.y : 220;
-
   allSkills = allSkills.map(s => (s.id === editingSkillId || s.key === editingSkillId) ? { ...s, label, sub } : s);
   saveLocal('msilas-skills', allSkills);
-  
-  // FIX: Include saved coordinates on programmatic edit updates
-  await syncToSupabase('skills', { user_id: USER_ID, key: editingSkillId, label, sub, x: currentX, y: currentY }, 'user_id,key');
+  await syncToSupabase('skills', { user_id: USER_ID, key: editingSkillId, label, sub }, 'user_id,key');
 
   allConnections = allConnections.filter(c => c.from !== editingSkillId && c.to !== editingSkillId);
   try { await sb.from('skill_connections').delete().or(`from_skill.eq.${editingSkillId},to_skill.eq.${editingSkillId}`).eq('user_id', USER_ID); } catch(e){}
@@ -1094,7 +1075,7 @@ async function saveSkill() {
   const newSkill = { id: key, key, label, sub, x: 220, y: 220 };
   allSkills.push(newSkill);
   saveLocal('msilas-skills', allSkills);
-  await syncToSupabase('skills', { user_id: USER_ID, key, label, sub, x: 220, y: 220 }, 'user_id,key');
+  await syncToSupabase('skills', { user_id: USER_ID, key, label, sub }, 'user_id,key');
 
   const promises = [];
   document.querySelectorAll('#skillConnectionPicker .skill-conn-check:checked').forEach(cb => {
@@ -1139,30 +1120,6 @@ async function init() {
         logged_dates: p.logged_dates || []
       }));
       saveLocal('msilas-projs', allProjects);
-    }
-
-    // FIX: Explicitly request 'x' and 'y' coordinates from database payload, and fall back safely to avoid central bundling
-    const { data: skillData } = await sb.from('skills').select('key,label,sub,x,y').eq('user_id', USER_ID);
-    if (skillData && skillData.length > 0) {
-      allSkills = skillData.map(s => ({
-        id: s.key,
-        key: s.key,
-        label: s.label,
-        sub: s.sub || '',
-        x: s.x !== undefined && s.x !== null ? Number(s.x) : undefined,
-        y: s.y !== undefined && s.y !== null ? Number(s.y) : undefined
-      }));
-      saveLocal('msilas-skills', allSkills);
-    }
-
-    const { data: connData } = await sb.from('skill_connections').select('from_skill,to_skill,label').eq('user_id', USER_ID);
-    if (connData && connData.length > 0) {
-      allConnections = connData.map(c => ({
-        from: c.from_skill,
-        to: c.to_skill,
-        label: c.label || ''
-      }));
-      saveLocal('msilas-connections', allConnections);
     }
 
     setSynced();
