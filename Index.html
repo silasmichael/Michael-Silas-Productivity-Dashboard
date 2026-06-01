@@ -329,6 +329,20 @@ async function syncToSupabase(table, payload, conflictCol) {
   }
 }
 
+// Global composite saving payload builder for Master AI Table sync
+async function syncToAiProductivityTable() {
+  const masterPayload = {
+    user_id: USER_ID,
+    activity_logs: allLogs,
+    custom_categories: customCats,
+    projects: allProjects,
+    skills: allSkills,
+    skill_connections: allConnections,
+    updated_at: new Date().toISOString()
+  };
+  await syncToSupabase('productivity_ai_master', masterPayload, 'user_id');
+}
+
 // ── Default Categories & Mind Map Objects ────────────────────
 const HABITS_DEFAULT = {
   writing:      { label:"Writing / Editing",   icon:"✍️" },
@@ -493,7 +507,7 @@ function renderAll() {
 function renderProjects() {
   const list = document.getElementById('projectsList');
   list.innerHTML = '';
-  if (allProjects.length === 0) {
+  if (!allProjects || allProjects.length === 0) {
     list.innerHTML = '<li style="color:#2a2a2a;font-size:13px;font-style:italic;padding:10px 0;">No projects yet.</li>';
     return;
   }
@@ -551,6 +565,7 @@ function addEntry() {
   renderAll();
   autoTrackProjects(cat, today);
   syncToSupabase('activity_logs', { user_id: USER_ID, date: today, entries: allLogs[today], updated_at: new Date().toISOString() }, 'user_id,date');
+  syncToAiProductivityTable();
 }
 
 function autoTrackProjects(category, date) {
@@ -584,6 +599,7 @@ function autoTrackProjects(category, date) {
         created_at: p.created_at
       }, 'id');
     });
+    syncToAiProductivityTable();
   }
 }
 
@@ -594,6 +610,7 @@ async function deleteEntry(i) {
     saveLocal('msilas-logs', allLogs);
     renderAll();
     await syncToSupabase('activity_logs', { user_id: USER_ID, date: today, entries: allLogs[today], updated_at: new Date().toISOString() }, 'user_id,date');
+    await syncToAiProductivityTable();
   }
 }
 
@@ -621,6 +638,7 @@ function saveEdit() {
   editingEntryIndex = -1;
   renderAll();
   renderProjects();
+  syncToAiProductivityTable();
 }
 
 function openAddCatModal() {
@@ -652,6 +670,7 @@ function saveNewCategory() {
   syncToSupabase('custom_categories', { user_id: USER_ID, key, label: name, icon }, 'user_id,key');
   closeModal('addCatModal');
   populateSelects();
+  syncToAiProductivityTable();
 }
 
 function openProjectModal(id) {
@@ -659,7 +678,7 @@ function openProjectModal(id) {
   populateSelects();
   document.getElementById('projModalTitle').textContent = id ? 'Edit Project' : 'New Project';
   if (id) {
-    const p = allProjects.find(p => p.id === id);
+    const p = allProjects.find(item => item.id === id);
     if (p) {
       document.getElementById('projName').value = p.name || '';
       document.getElementById('projDesc').value = p.description || '';
@@ -689,16 +708,7 @@ async function saveProject() {
     allProjects = allProjects.map(p => p.id === editingProject ? { ...p, name, description, status, related_category } : p);
     projToSync = allProjects.find(p => p.id === editingProject);
   } else {
-    // Ensure logged_dates is initialized as an empty array
-    const newProj = { 
-        id: 'proj_' + Date.now(), 
-        name, 
-        description, 
-        status, 
-        related_category, 
-        logged_dates: [], 
-        created_at: new Date().toISOString() 
-    };
+    const newProj = { id: 'proj_' + Date.now(), name, description, status, related_category, logged_dates: [], created_at: new Date().toISOString() };
     allProjects.push(newProj);
     projToSync = newProj;
   }
@@ -706,27 +716,22 @@ async function saveProject() {
   saveLocal('msilas-projs', allProjects);
   
   if (projToSync) {
-    // Explicitly structure the object for the database to prevent schema conflicts
-    const dbPayload = { 
+    await syncToSupabase('projects', { 
       id: projToSync.id,
       user_id: USER_ID, 
       name: projToSync.name,
       description: projToSync.description || '',
       status: projToSync.status,
       related_category: projToSync.related_category || '',
-      logged_dates: Array.isArray(projToSync.logged_dates) ? projToSync.logged_dates : [],
+      logged_dates: projToSync.logged_dates || [],
       created_at: projToSync.created_at
-    };
-
-    const success = await syncToSupabase('projects', dbPayload, 'id');
-    if (!success) {
-        console.error("Project sync failed: Ensure the 'projects' table has a 'logged_dates' column of type jsonb or text array.");
-    }
+    }, 'id');
   }
 
   closeModal('projectModal');
   editingProject = null;
   renderProjects();
+  await syncToAiProductivityTable();
 }
 
 async function handleDeleteProject(id) {
@@ -734,6 +739,7 @@ async function handleDeleteProject(id) {
   saveLocal('msilas-projs', allProjects);
   try { await sb.from('projects').delete().eq('id', id).eq('user_id', USER_ID); } catch(e) { console.error(e); }
   renderProjects();
+  await syncToAiProductivityTable();
 }
 
 function openModal(id)  { document.getElementById(id).classList.add('open'); }
@@ -890,6 +896,7 @@ function handleMapMouseUp() {
   
   saveLocal('msilas-skills', allSkills);
   draggedNode = null;
+  syncToAiProductivityTable();
   setTimeout(() => { hasDraggedSignificant = false; }, 50);
 }
 
@@ -1040,6 +1047,7 @@ async function updateSkill() {
   editingSkillId = null;
   buildMap();
   toggleSkill(null);
+  await syncToAiProductivityTable();
 }
 
 async function deleteCurrentSkill() {
@@ -1058,6 +1066,7 @@ async function deleteCurrentSkill() {
   editingSkillId = null;
   buildMap();
   toggleSkill(null);
+  await syncToAiProductivityTable();
 }
 
 function openAddSkillModal() {
@@ -1106,6 +1115,7 @@ async function saveSkill() {
   closeModal('addSkillModal');
   buildMap();
   toggleSkill(null);
+  await syncToAiProductivityTable();
 }
 
 // ── Dashboard Lifecycle Initialization ──────────────────────────────
