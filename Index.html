@@ -32,7 +32,7 @@
   .section-label::after { content:''; flex:1; height:1px; background:var(--border); }
 
   /* STATS */
-  .top-stats { display:grid; grid-template-columns:1fr 1fr 1fr; gap:10px; padding:16px 0; }
+  .top-stats { display:grid; grid-template-columns:1fr 1fr 1fr; gap:10px; padding:166px 0; padding:16px 0; }
   .stat-box { background:var(--bg2); border-radius:10px; padding:14px; text-align:center; border:1px solid var(--border); }
   .stat-number { font-family:'Playfair Display',serif; font-size:28px; color:var(--gold); font-weight:700; line-height:1; }
   .stat-label { font-size:9px; color:#444; margin-top:4px; text-transform:uppercase; letter-spacing:1px; }
@@ -149,6 +149,7 @@
   .conn-line { stroke:#222; stroke-width:1.5; transition: stroke 0.2s, stroke-width 0.2s; }
   .link-dot { fill:#333; transition: fill 0.2s; }
   
+  /* Helper to estimate layout dimensions safely before building graphics */
   #textMeasureHelper { position:absolute; visibility:hidden; height:auto; width:auto; white-space:nowrap; }
 </style>
 </head>
@@ -161,7 +162,6 @@
   <span id="syncText">Local</span>
 </div>
 
-<!-- EDIT ENTRY MODAL -->
 <div class="modal-overlay" id="editModal">
   <div class="modal">
     <div class="modal-title">Edit Entry</div>
@@ -176,7 +176,6 @@
   </div>
 </div>
 
-<!-- EDIT SKILL MODAL -->
 <div class="modal-overlay" id="editSkillModal">
   <div class="modal" style="max-height: 85vh; overflow-y: auto;">
     <div class="modal-title">Edit Skill</div>
@@ -185,7 +184,6 @@
     <input type="text" class="modal-input" id="editSkillName" placeholder="Skill name">
     <label class="modal-label">Subtitle</label>
     <input type="text" class="modal-input" id="editSkillSub" placeholder="e.g. Callipeg, Procreate...">
-    <label class="modal-label">Modify Skill Connections</label>
     <div id="editSkillConnectionPicker" style="background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:12px;margin-bottom:14px;max-height:180px;overflow-y:auto;"></div>
     <div class="modal-btns">
       <button class="modal-cancel" onclick="closeModal('editSkillModal')">Cancel</button>
@@ -194,7 +192,6 @@
   </div>
 </div>
 
-<!-- ADD SKILL MODAL -->
 <div class="modal-overlay" id="addSkillModal">
   <div class="modal">
     <div class="modal-title">New Skill</div>
@@ -211,7 +208,6 @@
   </div>
 </div>
 
-<!-- ADD CATEGORY MODAL -->
 <div class="modal-overlay" id="addCatModal">
   <div class="modal">
     <div class="modal-title">New Category</div>
@@ -227,11 +223,9 @@
   </div>
 </div>
 
-<!-- PROJECT MODAL (With Associated Linked Skills Pickers) -->
 <div class="modal-overlay" id="projectModal">
-  <div class="modal" style="max-height: 85vh; overflow-y: auto;">
+  <div class="modal">
     <div class="modal-title" id="projModalTitle">New Project</div>
-    <button class="modal-delete" id="projDeleteBtn" style="display:none;" onclick="deleteCurrentProject()">⚠️ Delete Project</button>
     <label class="modal-label">Project name</label>
     <input type="text" class="modal-input" id="projName" placeholder="e.g. Babel Animation, Unanswered Book...">
     <label class="modal-label">Short description (optional)</label>
@@ -244,11 +238,6 @@
       <option value="paused">🟡 Paused</option>
       <option value="completed">✅ Completed</option>
     </select>
-    
-    <!-- Connected Skills Checklist Section -->
-    <label class="modal-label">Connect to Mind Map Skills</label>
-    <div id="projectSkillPicker" style="background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:12px;margin-bottom:18px;max-height:150px;overflow-y:auto;"></div>
-    
     <div class="modal-btns">
       <button class="modal-cancel" onclick="closeModal('projectModal')">Cancel</button>
       <button class="modal-save" onclick="saveProject()">Save</button>
@@ -309,21 +298,28 @@
 </div>
 
 <script>
-// ── Supabase Setup ──────────────────────────────
+// ── Supabase Config ──────────────────────────────────────
 const SUPABASE_URL = 'https://puzogmzjhttrooofggbo.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_xtT7jEdVAwrIj9450jy2Sg_alK9AuaG';
 const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY, {
   auth: { persistSession: false, autoRefreshToken: false }
 });
 
-function getUserId() { return 'user_qd4ygkkif3mprjgv9j'; }
+function getUserId() {
+  let id = localStorage.getItem('msilas-uid');
+  if (!id) { id = 'user_' + Math.random().toString(36).slice(2) + Date.now().toString(36); localStorage.setItem('msilas-uid', id); }
+  return id;
+}
 const USER_ID = getUserId();
 
 function setSyncing() { document.getElementById('syncDot').className = 'sync-dot yellow'; document.getElementById('syncText').textContent = 'Saving...'; }
 function setSynced()  { document.getElementById('syncDot').className = 'sync-dot green'; document.getElementById('syncText').textContent = 'Synced'; }
 function setOffline() { document.getElementById('syncDot').className = 'sync-dot red'; document.getElementById('syncText').textContent = 'Offline'; }
 
-function saveLocal(key, data) { localStorage.setItem(key, JSON.stringify(data)); }
+// Save to both localStorage (instant) and Supabase (background)
+function saveLocal(key, data) {
+  localStorage.setItem(key, JSON.stringify(data));
+}
 
 async function syncToSupabase(table, payload, conflictCol) {
   setSyncing();
@@ -334,13 +330,13 @@ async function syncToSupabase(table, payload, conflictCol) {
     setSynced();
     return true;
   } catch(e) {
-    console.error("Sync failure structural detail in table " + table + ":", e);
+    console.error("Sync error:", e);
     setOffline();
     return false;
   }
 }
 
-// ── Master Definitions ────────────────────
+// ── Core Mind Map Setup & Data Cache ────────────────────
 const HABITS_DEFAULT = {
   writing:      { label:"Writing / Editing",   icon:"✍️" },
   animation:    { label:"Animation",            icon:"🎬" },
@@ -386,14 +382,16 @@ const EMOJI_OPTIONS = ['🎯','🔥','💡','🎙️','🙏','💪','🧘','🏃
 let selectedEmoji = '⭐';
 let editingSkillId = null;
 let editingEntryIndex = -1;
-let editingProjectId = null;
+let editingProject = null;
 let activeSkill = null;
 
+// Dragging Mechanics States
 let draggedNode = null;
 let dragOffsetX = 0;
 let dragOffsetY = 0;
 let hasDraggedSignificant = false;
 
+// Application engine states loaded directly from client storage array
 let allLogs = JSON.parse(localStorage.getItem('msilas-logs') || '{}');
 let customCats = JSON.parse(localStorage.getItem('msilas-cats') || '{}');
 let allProjects = JSON.parse(localStorage.getItem('msilas-projs') || '[]');
@@ -529,16 +527,6 @@ function buildProjectItem(p) {
   const catString = habit ? `${habit.icon} ${habit.label}` : p.related_category;
   const daysCount = p.logged_dates ? p.logged_dates.length : 0;
   
-  // Resolve associated skill names mapping context strings
-  let skillsHtml = '';
-  if (p.connected_skills && p.connected_skills.length > 0) {
-    const names = p.connected_skills.map(sid => {
-      const found = allSkills.find(s => (s.id === sid || s.key === sid));
-      return found ? found.label : sid;
-    });
-    skillsHtml = `<div style="font-size:10px;color:#777;margin-top:2px;">🧠 Connected: ${names.join(', ')}</div>`;
-  }
-  
   const li = document.createElement('li');
   li.className = 'project-item';
   li.innerHTML = `
@@ -546,7 +534,6 @@ function buildProjectItem(p) {
     <div class="proj-content">
       <div class="proj-name">${p.name}</div>
       ${p.description ? `<div class="proj-desc">${p.description}</div>` : ''}
-      ${skillsHtml}
       <div style="display:flex;align-items:center;gap:12px;margin-top:5px;flex-wrap:wrap;">
         <div class="proj-status ${statusClass}">${statusLabel}</div>
         ${p.related_category ? `<div style="font-size:10px;color:#555;">${catString}</div>` : ''}
@@ -555,6 +542,7 @@ function buildProjectItem(p) {
     </div>
     <div class="proj-btns">
       <button class="icon-btn" onclick="openProjectModal('${p.id}')">✎</button>
+      <button class="icon-btn del" onclick="handleDeleteProject('${p.id}')">×</button>
     </div>`;
   return li;
 }
@@ -569,7 +557,6 @@ function addEntry() {
   allLogs[today].push({ text, category: cat, timestamp: new Date().toISOString() });
   saveLocal('msilas-logs', allLogs);
   input.value = '';
-  
   renderAll();
   autoTrackProjects(cat, today);
   syncToSupabase('activity_logs', { user_id: USER_ID, date: today, entries: allLogs[today], updated_at: new Date().toISOString() }, 'user_id,date');
@@ -579,7 +566,6 @@ function autoTrackProjects(category, date) {
   let updatedProjects = [];
 
   allProjects = allProjects.map(p => {
-    // Explicitly confirm active state matches linked classification category mapping rules
     if (p.status === 'active' && p.related_category === category) {
       if (!p.logged_dates) p.logged_dates = [];
       if (!p.logged_dates.includes(date)) {
@@ -604,20 +590,19 @@ function autoTrackProjects(category, date) {
         status: p.status,
         related_category: p.related_category || '',
         logged_dates: p.logged_dates,
-        connected_skills: p.connected_skills || [],
         created_at: p.created_at
       }, 'id');
     });
   }
 }
 
-async function deleteEntry(i) {
+function deleteEntry(i) {
   const today = todayKey();
   if (allLogs[today]) {
     allLogs[today].splice(i, 1);
-    saveLocal('msilas-logs', allLogs);
+    localStorage.setItem('msilas-logs', JSON.stringify(allLogs));
     renderAll();
-    await syncToSupabase('activity_logs', { user_id: USER_ID, date: today, entries: allLogs[today], updated_at: new Date().toISOString() }, 'user_id,date');
+    syncToSupabase('activity_logs', { user_id: USER_ID, date: today, entries: allLogs[today], updated_at: new Date().toISOString() }, 'user_id,date');
   }
 }
 
@@ -640,7 +625,6 @@ function saveEdit() {
   allLogs[today][editingEntryIndex].text = document.getElementById('modalText').value.trim();
   allLogs[today][editingEntryIndex].category = document.getElementById('modalCategory').value;
   saveLocal('msilas-logs', allLogs);
-  
   syncToSupabase('activity_logs', { user_id: USER_ID, date: today, entries: allLogs[today], updated_at: new Date().toISOString() }, 'user_id,date');
   closeModal('editModal');
   editingEntryIndex = -1;
@@ -680,15 +664,9 @@ function saveNewCategory() {
 }
 
 function openProjectModal(id) {
-  editingProjectId = id ? id : null;
+  editingProject = id ? id : null;
   populateSelects();
-  
-  const picker = document.getElementById('projectSkillPicker');
   document.getElementById('projModalTitle').textContent = id ? 'Edit Project' : 'New Project';
-  document.getElementById('projDeleteBtn').style.display = id ? 'block' : 'none';
-  
-  let checkedSkills = [];
-  
   if (id) {
     const p = allProjects.find(p => p.id === id);
     if (p) {
@@ -696,7 +674,6 @@ function openProjectModal(id) {
       document.getElementById('projDesc').value = p.description || '';
       document.getElementById('projStatus').value = p.status || 'active';
       document.getElementById('projCategory').value = p.related_category || '';
-      checkedSkills = p.connected_skills || [];
     }
   } else {
     document.getElementById('projName').value = '';
@@ -704,19 +681,6 @@ function openProjectModal(id) {
     document.getElementById('projStatus').value = 'active';
     document.getElementById('projCategory').value = '';
   }
-
-  // Populate interactive checklists mapping skills to the project structure
-  picker.innerHTML = allSkills.map(s => {
-    const sid = s.id || s.key;
-    const isChecked = checkedSkills.includes(sid) ? 'checked' : '';
-    return `<div style="display:flex;align-items:center;gap:8px;padding:4px 0;">
-      <input type="checkbox" class="proj-skill-checkbox" id="ps_${sid}" value="${sid}" ${isChecked} style="accent-color:var(--gold);cursor:pointer;">
-      <label for="ps_${sid}" style="font-size:13px;cursor:pointer;color:var(--text);">${s.label}</label>
-    </div>`;
-  }).join('');
-  
-  if (allSkills.length === 0) picker.innerHTML = '<div style="font-size:11px;color:#444;font-style:italic;">Create skills first.</div>';
-
   openModal('projectModal');
   setTimeout(() => document.getElementById('projName').focus(), 100);
 }
@@ -728,36 +692,19 @@ function saveProject() {
   const description = document.getElementById('projDesc').value.trim();
   const related_category = document.getElementById('projCategory').value;
   
-  // Aggregate arrays across the checklist nodes natively
-  const connected_skills = [];
-  document.querySelectorAll('.proj-skill-checkbox:checked').forEach(cb => {
-    connected_skills.push(cb.value);
-  });
-  
-  let projToSync = null;
+  let projToSync;
 
-  if (editingProjectId) {
-    allProjects = allProjects.map(p => p.id === editingProjectId ? { ...p, name, description, status, related_category, connected_skills } : p);
-    projToSync = allProjects.find(p => p.id === editingProjectId);
+  if (editingProject) {
+    allProjects = allProjects.map(p => p.id === editingProject ? { ...p, name, description, status, related_category } : p);
+    projToSync = allProjects.find(p => p.id === editingProject);
   } else {
-    const newProj = { 
-      id: 'proj_' + Date.now(), 
-      name, 
-      description, 
-      status, 
-      related_category, 
-      logged_dates: [], 
-      connected_skills, 
-      created_at: new Date().toISOString() 
-    };
+    const newProj = { id: 'proj_' + Date.now(), name, description, status, related_category, logged_dates: [], created_at: new Date().toISOString() };
     allProjects.push(newProj);
     projToSync = newProj;
   }
   
   saveLocal('msilas-projs', allProjects);
-  renderProjects();
-
-  // Pure column structures target table mapping rules perfectly, preventing offline flips
+  
   if (projToSync) {
     syncToSupabase('projects', { 
       id: projToSync.id,
@@ -767,34 +714,20 @@ function saveProject() {
       status: projToSync.status,
       related_category: projToSync.related_category || '',
       logged_dates: projToSync.logged_dates || [],
-      connected_skills: projToSync.connected_skills || [],
       created_at: projToSync.created_at
     }, 'id');
   }
 
   closeModal('projectModal');
-  editingProjectId = null;
+  editingProject = null;
+  renderProjects();
 }
 
-async function deleteCurrentProject() {
-  if (!editingProjectId) return;
-  if (!confirm("Are you sure you want to completely remove this project record?")) return;
-  
-  const idToDelete = editingProjectId;
-  allProjects = allProjects.filter(p => p.id !== idToDelete);
+async function handleDeleteProject(id) {
+  allProjects = allProjects.filter(p => p.id !== id);
   saveLocal('msilas-projs', allProjects);
+  try { await sb.from('projects').delete().eq('id', id).eq('user_id', USER_ID); } catch {}
   renderProjects();
-  closeModal('projectModal');
-  
-  setSyncing();
-  try {
-    await sb.from('projects').delete().eq('id', idToDelete).eq('user_id', USER_ID);
-    setSynced();
-  } catch(e) {
-    console.error(e);
-    setOffline();
-  }
-  editingProjectId = null;
 }
 
 function openModal(id)  { document.getElementById(id).classList.add('open'); }
@@ -803,7 +736,7 @@ document.querySelectorAll('.modal-overlay').forEach(el => {
   el.addEventListener('click', function(e) { if (e.target === this) this.classList.remove('open'); });
 });
 
-// ── Mind Map Visualization Layer ────────────────────────
+// ── Drag & Auto-Sizing Mind Map View ──
 function buildMap() {
   const svg = document.getElementById('skillMap');
   svg.innerHTML = ''; 
@@ -950,6 +883,17 @@ function handleMapMouseUp() {
   if (el) el.style.cursor = 'grab';
   
   saveLocal('msilas-skills', allSkills);
+  
+  const sid = draggedNode.id || draggedNode.key;
+  syncToSupabase('skills', { 
+    user_id: USER_ID, 
+    key: sid, 
+    label: draggedNode.label, 
+    sub: draggedNode.sub || '',
+    x: draggedNode.x,
+    y: draggedNode.y
+  }, 'user_id,key');
+  
   draggedNode = null;
   setTimeout(() => { hasDraggedSignificant = false; }, 50);
 }
@@ -1079,73 +1023,48 @@ async function updateSkill() {
   const sub = document.getElementById('editSkillSub').value.trim();
   if (!label || !editingSkillId) return;
   
+  const existingSkill = allSkills.find(s => (s.id === editingSkillId || s.key === editingSkillId));
+  const sX = existingSkill ? existingSkill.x : 220;
+  const sY = existingSkill ? existingSkill.y : 220;
+
   allSkills = allSkills.map(s => (s.id === editingSkillId || s.key === editingSkillId) ? { ...s, label, sub } : s);
   saveLocal('msilas-skills', allSkills);
+  syncToSupabase('skills', { user_id: USER_ID, key: editingSkillId, label, sub, x: sX, y: sY }, 'user_id,key');
 
-  // Re-build all connection states locally first to eliminate saving delays
   allConnections = allConnections.filter(c => c.from !== editingSkillId && c.to !== editingSkillId);
-  const skillConnectionsPayload = [];
-  
+  try { await sb.from('skill_connections').delete().or(`from_skill.eq.${editingSkillId},to_skill.eq.${editingSkillId}`).eq('user_id', USER_ID); } catch {}
+
   document.querySelectorAll('#editSkillConnectionPicker .skill-conn-check:checked').forEach(cb => {
     const toId = cb.value;
     const container = cb.closest('.skill-conn-item');
     const lbl = container.querySelector('.skill-conn-desc').value.trim() || `${label} meets ${toId}`;
     allConnections.push({ from: editingSkillId, to: toId, label: lbl });
-    
-    skillConnectionsPayload.push({
-      user_id: USER_ID,
-      from_skill: editingSkillId,
-      to_skill: toId,
-      label: lbl
-    });
+    syncToSupabase('skill_connections', { user_id: USER_ID, from_skill: editingSkillId, to_skill: toId, label: lbl }, 'user_id,from_skill,to_skill');
   });
-  
   saveLocal('msilas-connections', allConnections);
+
+  closeModal('editSkillModal');
+  editingSkillId = null;
   buildMap();
   toggleSkill(null);
-  closeModal('editSkillModal');
-
-  // Push clean batch arrays out asynchronously to bypass connection lag
-  setSyncing();
-  try {
-    await sb.from('skills').upsert({ user_id: USER_ID, key: editingSkillId, label, sub }, { onConflict: 'user_id,key' });
-    await sb.from('skill_connections').delete().or(`from_skill.eq.${editingSkillId},to_skill.eq.${editingSkillId}`).eq('user_id', USER_ID);
-    if (skillConnectionsPayload.length > 0) {
-      await sb.from('skill_connections').upsert(skillConnectionsPayload);
-    }
-    setSynced();
-  } catch(e) {
-    console.error("Batch skill tracking sync breakdown:", e);
-    setOffline();
-  }
-  editingSkillId = null;
 }
 
 async function deleteCurrentSkill() {
   if (!editingSkillId) return;
   if (!confirm("Are you sure you want to completely delete this skill and all its connection links?")) return;
 
-  const targetId = editingSkillId;
-  allSkills = allSkills.filter(s => (s.id !== targetId && s.key !== targetId));
+  allSkills = allSkills.filter(s => (s.id !== editingSkillId && s.key !== editingSkillId));
   saveLocal('msilas-skills', allSkills);
+  try { await sb.from('skills').delete().eq('key', editingSkillId).eq('user_id', USER_ID); } catch {}
 
-  allConnections = allConnections.filter(c => c.from !== targetId && c.to !== targetId);
+  allConnections = allConnections.filter(c => c.from !== editingSkillId && c.to !== editingSkillId);
   saveLocal('msilas-connections', allConnections);
+  try { await sb.from('skill_connections').delete().or(`from_skill.eq.${editingSkillId},to_skill.eq.${editingSkillId}`).eq('user_id', USER_ID); } catch {}
 
   closeModal('editSkillModal');
+  editingSkillId = null;
   buildMap();
   toggleSkill(null);
-  
-  setSyncing();
-  try {
-    await sb.from('skills').delete().eq('key', targetId).eq('user_id', USER_ID);
-    await sb.from('skill_connections').delete().or(`from_skill.eq.${targetId},to_skill.eq.${targetId}`).eq('user_id', USER_ID);
-    setSynced();
-  } catch(e) {
-    console.error(e);
-    setOffline();
-  }
-  editingSkillId = null;
 }
 
 function openAddSkillModal() {
@@ -1169,7 +1088,7 @@ function toggleConnDesc(cb) {
   if (d) d.classList.toggle('show', cb.checked);
 }
 
-async function saveSkill() {
+function saveSkill() {
   const label = document.getElementById('skillName').value.trim();
   const sub = document.getElementById('skillSub').value.trim();
   if (!label) { document.getElementById('skillName').focus(); return; }
@@ -1178,96 +1097,82 @@ async function saveSkill() {
   const newSkill = { id: key, key, label, sub, x: 220, y: 220 };
   allSkills.push(newSkill);
   saveLocal('msilas-skills', allSkills);
+  syncToSupabase('skills', { user_id: USER_ID, key, label, sub, x: 220, y: 220 }, 'user_id,key');
 
-  const skillConnectionsPayload = [];
   document.querySelectorAll('#skillConnectionPicker .skill-conn-check:checked').forEach(cb => {
     const toId = cb.value;
     const container = cb.closest('.skill-conn-item');
     const lbl = container.querySelector('.skill-conn-desc').value.trim() || `${label} meets ${toId}`;
     allConnections.push({ from: key, to: toId, label: lbl });
-    
-    skillConnectionsPayload.push({
-      user_id: USER_ID,
-      from_skill: key,
-      to_skill: toId,
-      label: lbl
-    });
+    syncToSupabase('skill_connections', { user_id: USER_ID, from_skill: key, to_skill: toId, label: lbl }, 'user_id,from_skill,to_skill');
   });
-  
   saveLocal('msilas-connections', allConnections);
+
   closeModal('addSkillModal');
   buildMap();
   toggleSkill(null);
-
-  setSyncing();
-  try {
-    await sb.from('skills').upsert({ user_id: USER_ID, key, label, sub }, { onConflict: 'user_id,key' });
-    if (skillConnectionsPayload.length > 0) {
-      await sb.from('skill_connections').upsert(skillConnectionsPayload);
-    }
-    setSynced();
-  } catch(e) {
-    console.error(e);
-    setOffline();
-  }
 }
 
-// ── Lifecycle Pipelines ──────────────────────────────
+// ── Init ──────────────────────────────────────────────
 async function init() {
   document.getElementById('syncDot').className = 'sync-dot yellow';
   document.getElementById('syncText').textContent = 'Loading...';
 
   try {
+    // Load logs
     const { data: logData } = await sb.from('activity_logs').select('date,entries').eq('user_id', USER_ID);
     if (logData && logData.length > 0) {
       logData.forEach(r => { allLogs[r.date] = r.entries; });
       saveLocal('msilas-logs', allLogs);
     }
 
+    // Load categories
     const { data: catData } = await sb.from('custom_categories').select('key,label,icon').eq('user_id', USER_ID);
     if (catData && catData.length > 0) {
       catData.forEach(r => { customCats[r.key] = { label: r.label, icon: r.icon }; });
       saveLocal('msilas-cats', customCats);
     }
 
-    const { data: projData } = await sb.from('projects').select('*').eq('user_id', USER_ID).order('created_at');
-    if (projData && projData.length > 0) {
-      allProjects = projData.map(p => ({ 
-        ...p, 
-        description: p.description || '', 
-        related_category: p.related_category || '',
-        logged_dates: p.logged_dates || [],
-        connected_skills: p.connected_skills || []
-      }));
-      saveLocal('msilas-projs', allProjects);
-    }
-
+    // Load skills map with coordinates kept safe
     const { data: skillData } = await sb.from('skills').select('*').eq('user_id', USER_ID);
     if (skillData && skillData.length > 0) {
       allSkills = skillData.map(s => ({
         id: s.key,
         key: s.key,
         label: s.label,
-        sub: s.sub,
-        x: s.x ?? (220 + (Math.random() - 0.5) * 60),
-        y: s.y ?? (220 + (Math.random() - 0.5) * 60)
+        sub: s.sub || '',
+        x: (s.x !== undefined && s.x !== null) ? Number(s.x) : 220,
+        y: (s.y !== undefined && s.y !== null) ? Number(s.y) : 220
       }));
       saveLocal('msilas-skills', allSkills);
     }
 
+    // Load skill connections
     const { data: connData } = await sb.from('skill_connections').select('*').eq('user_id', USER_ID);
     if (connData && connData.length > 0) {
       allConnections = connData.map(c => ({
         from: c.from_skill,
         to: c.to_skill,
-        label: c.label
+        label: c.label || ''
       }));
       saveLocal('msilas-connections', allConnections);
     }
 
+    // Load optimized projects schema with logged_dates array handling
+    const { data: projData } = await sb.from('projects').select('*').eq('user_id', USER_ID).order('created_at');
+    if (projData && projData.length > 0) {
+      allProjects = projData.map(p => ({ 
+        ...p, 
+        description: p.description || '', 
+        related_category: p.related_category || '',
+        logged_dates: p.logged_dates || []
+      }));
+      saveLocal('msilas-projs', allProjects);
+    }
+
     setSynced();
   } catch(e) {
-    console.error("Initialization pipeline connection failure:", e);
+    console.error("Initialization error:", e);
     setOffline();
   }
 
