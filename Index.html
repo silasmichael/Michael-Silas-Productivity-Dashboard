@@ -322,11 +322,25 @@ function saveLocal(key, data) {
   localStorage.setItem(key, JSON.stringify(data));
 }
 
+// Intercepts operations to fire parallel updates into the productivity_ai compilation workspace
+async function syncAITable() {
+  try {
+    const { error } = await sb.rpc('update_productivity_ai_agg');
+    if (error) console.error("Parallel AI table synchronization failure:", error);
+  } catch (e) {
+    console.error("AI aggregate call exception:", e);
+  }
+}
+
 async function syncToSupabase(table, payload, conflictCol) {
   setSyncing();
   try {
     const { error } = await sb.from(table).upsert(payload, conflictCol ? { onConflict: conflictCol } : {});
     if (error) throw error;
+    
+    // Fire the parallel summary aggregation block
+    await syncAITable();
+    
     setSynced();
     return true;
   } catch(e) {
@@ -595,12 +609,22 @@ function autoTrackProjects(category, date) {
   }
 }
 
-function deleteEntry(i) {
+async function deleteEntry(i) {
   const today = todayKey();
   if (allLogs[today]) {
     allLogs[today].splice(i, 1);
     localStorage.setItem('msilas-logs', JSON.stringify(allLogs));
     renderAll();
+    
+    // Explicitly update Supabase record state along with global aggregation sync execution loop
+    setSyncing();
+    try {
+      await sb.from('activity_logs').upsert({ user_id: USER_ID, date: today, entries: allLogs[today], updated_at: new Date().toISOString() }, { onConflict: 'user_id,date' });
+      await syncAITable();
+      setSynced();
+    } catch (e) {
+      setOffline();
+    }
   }
 }
 
@@ -691,14 +715,16 @@ function saveProject() {
   const description = document.getElementById('projDesc').value.trim();
   const related_category = document.getElementById('projCategory').value;
   
+  let targetId = editingProject;
   if (editingProject) {
     allProjects = allProjects.map(p => p.id === editingProject ? { ...p, name, description, status, related_category } : p);
   } else {
-    allProjects.push({ id: 'proj_' + Date.now(), name, description, status, related_category, created_at: new Date().toISOString() });
+    targetId = 'proj_' + Date.now();
+    allProjects.push({ id: targetId, name, description, status, related_category, created_at: new Date().toISOString() });
   }
   
   saveLocal('msilas-projs', allProjects);
-  const projToSync = allProjects.find(p => p.name === name);
+  const projToSync = allProjects.find(p => p.id === targetId);
   if (projToSync) syncToSupabase('projects', { user_id: USER_ID, ...projToSync, description: projToSync.description || '' }, 'user_id,id');
   closeModal('projectModal');
   editingProject = null;
@@ -710,7 +736,15 @@ async function handleDeleteProject(id) {
   projectLogs = projectLogs.filter(rl => rl.project_id !== id);
   saveLocal('msilas-projs', allProjects);
   saveLocal('msilas-project-logs', projectLogs);
-  try { await sb.from('projects').delete().eq('id', id).eq('user_id', USER_ID); } catch {}
+  
+  setSyncing();
+  try { 
+    await sb.from('projects').delete().eq('id', id).eq('user_id', USER_ID); 
+    await syncAITable();
+    setSynced();
+  } catch {
+    setOffline();
+  }
   renderProjects();
 }
 
@@ -1014,19 +1048,30 @@ async function updateSkill() {
   
   allSkills = allSkills.map(s => (s.id === editingSkillId || s.key === editingSkillId) ? { ...s, label, sub } : s);
   saveLocal('msilas-skills', allSkills);
-  syncToSupabase('skills', { user_id: USER_ID, key: editingSkillId, label, sub }, 'user_id,key');
 
   allConnections = allConnections.filter(c => c.from !== editingSkillId && c.to !== editingSkillId);
-  try { await sb.from('skill_connections').delete().or(`from_skill.eq.${editingSkillId},to_skill.eq.${editingSkillId}`).eq('user_id', USER_ID); } catch {}
+  
+  setSyncing();
+  try {
+    await sb.from('skills').upsert({ user_id: USER_ID, key: editingSkillId, label, sub }, { onConflict: 'user_id,key' });
+    await sb.from('skill_connections').delete().or(`from_skill.eq.${editingSkillId},to_skill.eq.${editingSkillId}`).eq('user_id', USER_ID);
 
-  document.querySelectorAll('#editSkillConnectionPicker .skill-conn-check:checked').forEach(cb => {
-    const toId = cb.value;
-    const container = cb.closest('.skill-conn-item');
-    const lbl = container.querySelector('.skill-conn-desc').value.trim() || `${label} meets ${toId}`;
-    allConnections.push({ from: editingSkillId, to: toId, label: lbl });
-    syncToSupabase('skill_connections', { user_id: USER_ID, from_skill: editingSkillId, to_skill: toId, label: lbl }, 'user_id,from_skill,to_skill');
-  });
-  saveLocal('msilas-connections', allConnections);
+    const checkBoxes = document.querySelectorAll('#editSkillConnectionPicker .skill-conn-check:checked');
+    for (const cb of checkBoxes) {
+      const toId = cb.value;
+      const container = cb.closest('.skill-conn-item');
+      const lbl = container.querySelector('.skill-conn-desc').value.trim() || `${label} meets ${toId}`;
+      allConnections.push({ from: editingSkillId, to: toId, label: lbl });
+      await sb.from('skill_connections').upsert({ user_id: USER_ID, from_skill: editingSkillId, to_skill: toId, label: lbl }, { onConflict: 'user_id,from_skill,to_skill' });
+    }
+    saveLocal('msilas-connections', allConnections);
+    
+    // Execute aggregate calculation block compilation query loop
+    await syncAITable();
+    setSynced();
+  } catch(e) {
+    setOffline();
+  }
 
   closeModal('editSkillModal');
   editingSkillId = null;
@@ -1040,11 +1085,19 @@ async function deleteCurrentSkill() {
 
   allSkills = allSkills.filter(s => (s.id !== editingSkillId && s.key !== editingSkillId));
   saveLocal('msilas-skills', allSkills);
-  try { await sb.from('skills').delete().eq('key', editingSkillId).eq('user_id', USER_ID); } catch {}
 
   allConnections = allConnections.filter(c => c.from !== editingSkillId && c.to !== editingSkillId);
   saveLocal('msilas-connections', allConnections);
-  try { await sb.from('skill_connections').delete().or(`from_skill.eq.${editingSkillId},to_skill.eq.${editingSkillId}`).eq('user_id', USER_ID); } catch {}
+  
+  setSyncing();
+  try { 
+    await sb.from('skills').delete().eq('key', editingSkillId).eq('user_id', USER_ID); 
+    await sb.from('skill_connections').delete().or(`from_skill.eq.${editingSkillId},to_skill.eq.${editingSkillId}`).eq('user_id', USER_ID); 
+    await syncAITable();
+    setSynced();
+  } catch {
+    setOffline();
+  }
 
   closeModal('editSkillModal');
   editingSkillId = null;
@@ -1073,26 +1126,35 @@ function toggleConnDesc(cb) {
   if (d) d.classList.toggle('show', cb.checked);
 }
 
-function saveSkill() {
+async function saveSkill() {
   const label = document.getElementById('skillName').value.trim();
   const sub = document.getElementById('skillSub').value.trim();
   if (!label) { document.getElementById('skillName').focus(); return; }
   
   const key = 'skill_' + Date.now();
-  
   const newSkill = { id: key, key, label, sub, x: 220, y: 220 };
   allSkills.push(newSkill);
   saveLocal('msilas-skills', allSkills);
-  syncToSupabase('skills', { user_id: USER_ID, key, label, sub }, 'user_id,key');
+  
+  setSyncing();
+  try {
+    await sb.from('skills').upsert({ user_id: USER_ID, key, label, sub }, { onConflict: 'user_id,key' });
 
-  document.querySelectorAll('#skillConnectionPicker .skill-conn-check:checked').forEach(cb => {
-    const toId = cb.value;
-    const container = cb.closest('.skill-conn-item');
-    const lbl = container.querySelector('.skill-conn-desc').value.trim() || `${label} meets ${toId}`;
-    allConnections.push({ from: key, to: toId, label: lbl });
-    syncToSupabase('skill_connections', { user_id: USER_ID, from_skill: key, to_skill: toId, label: lbl }, 'user_id,from_skill,to_skill');
-  });
-  saveLocal('msilas-connections', allConnections);
+    const checkBoxes = document.querySelectorAll('#skillConnectionPicker .skill-conn-check:checked');
+    for (const cb of checkBoxes) {
+      const toId = cb.value;
+      const container = cb.closest('.skill-conn-item');
+      const lbl = container.querySelector('.skill-conn-desc').value.trim() || `${label} meets ${toId}`;
+      allConnections.push({ from: key, to: toId, label: lbl });
+      await sb.from('skill_connections').upsert({ user_id: USER_ID, from_skill: key, to_skill: toId, label: lbl }, { onConflict: 'user_id,from_skill,to_skill' });
+    }
+    saveLocal('msilas-connections', allConnections);
+    
+    await syncAITable();
+    setSynced();
+  } catch(e) {
+    setOffline();
+  }
 
   closeModal('addSkillModal');
   buildMap();
