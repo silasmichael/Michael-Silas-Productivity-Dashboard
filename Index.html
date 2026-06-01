@@ -329,6 +329,17 @@ async function syncToSupabase(table, payload, conflictCol) {
   }
 }
 
+// Fire-and-forget AI table sync — calls the DB trigger function
+// Does NOT affect the sync badge so it never shows false "Offline"
+async function syncToAiProductivityTable() {
+  try {
+    await sb.rpc('update_productivity_ai_agg');
+  } catch(e) {
+    console.log('AI sync note:', e.message);
+    // Silently skip — the trigger handles this automatically anyway
+  }
+}
+
 // ── Default Categories & Mind Map Objects ────────────────────
 const HABITS_DEFAULT = {
   writing:      { label:"Writing / Editing",   icon:"✍️" },
@@ -493,7 +504,7 @@ function renderAll() {
 function renderProjects() {
   const list = document.getElementById('projectsList');
   list.innerHTML = '';
-  if (allProjects.length === 0) {
+  if (!allProjects || allProjects.length === 0) {
     list.innerHTML = '<li style="color:#2a2a2a;font-size:13px;font-style:italic;padding:10px 0;">No projects yet.</li>';
     return;
   }
@@ -551,6 +562,7 @@ function addEntry() {
   renderAll();
   autoTrackProjects(cat, today);
   syncToSupabase('activity_logs', { user_id: USER_ID, date: today, entries: allLogs[today], updated_at: new Date().toISOString() }, 'user_id,date');
+  syncToAiProductivityTable();
 }
 
 function autoTrackProjects(category, date) {
@@ -584,6 +596,7 @@ function autoTrackProjects(category, date) {
         created_at: p.created_at
       }, 'id');
     });
+    syncToAiProductivityTable();
   }
 }
 
@@ -594,6 +607,7 @@ async function deleteEntry(i) {
     saveLocal('msilas-logs', allLogs);
     renderAll();
     await syncToSupabase('activity_logs', { user_id: USER_ID, date: today, entries: allLogs[today], updated_at: new Date().toISOString() }, 'user_id,date');
+    await syncToAiProductivityTable();
   }
 }
 
@@ -621,6 +635,7 @@ function saveEdit() {
   editingEntryIndex = -1;
   renderAll();
   renderProjects();
+  syncToAiProductivityTable();
 }
 
 function openAddCatModal() {
@@ -652,6 +667,7 @@ function saveNewCategory() {
   syncToSupabase('custom_categories', { user_id: USER_ID, key, label: name, icon }, 'user_id,key');
   closeModal('addCatModal');
   populateSelects();
+  syncToAiProductivityTable();
 }
 
 function openProjectModal(id) {
@@ -659,7 +675,7 @@ function openProjectModal(id) {
   populateSelects();
   document.getElementById('projModalTitle').textContent = id ? 'Edit Project' : 'New Project';
   if (id) {
-    const p = allProjects.find(p => p.id === id);
+    const p = allProjects.find(item => item.id === id);
     if (p) {
       document.getElementById('projName').value = p.name || '';
       document.getElementById('projDesc').value = p.description || '';
@@ -676,42 +692,84 @@ function openProjectModal(id) {
   setTimeout(() => document.getElementById('projName').focus(), 100);
 }
 
-function saveProject() {
+async function saveProject() {
   const name = document.getElementById('projName').value.trim();
   if (!name) { document.getElementById('projName').focus(); return; }
   const status = document.getElementById('projStatus').value;
   const description = document.getElementById('projDesc').value.trim();
   const related_category = document.getElementById('projCategory').value;
-  
-  let projToSync;
+
+  setSyncing();
 
   if (editingProject) {
-    allProjects = allProjects.map(p => p.id === editingProject ? { ...p, name, description, status, related_category } : p);
-    projToSync = allProjects.find(p => p.id === editingProject);
+    // ── EDIT: update in Supabase, then reflect locally ──
+    try {
+      const { error } = await sb.from('projects')
+        .update({ name, description: description || '', status, related_category: related_category || '' })
+        .eq('id', editingProject)
+        .eq('user_id', USER_ID);
+      if (error) throw error;
+      allProjects = allProjects.map(p => p.id === editingProject
+        ? { ...p, name, description, status, related_category }
+        : p);
+      saveLocal('msilas-projs', allProjects);
+      setSynced();
+    } catch(e) {
+      console.error('Project update failed:', e);
+      // Still update locally so UI reflects the change
+      allProjects = allProjects.map(p => p.id === editingProject
+        ? { ...p, name, description, status, related_category }
+        : p);
+      saveLocal('msilas-projs', allProjects);
+      setOffline();
+    }
+
   } else {
-    const newProj = { id: 'proj_' + Date.now(), name, description, status, related_category, logged_dates: [], created_at: new Date().toISOString() };
-    allProjects.push(newProj);
-    projToSync = newProj;
-  }
-  
-  saveLocal('msilas-projs', allProjects);
-  
-  if (projToSync) {
-    syncToSupabase('projects', { 
-      id: projToSync.id,
-      user_id: USER_ID, 
-      name: projToSync.name,
-      description: projToSync.description || '',
-      status: projToSync.status,
-      related_category: projToSync.related_category || '',
-      logged_dates: projToSync.logged_dates || [],
-      created_at: projToSync.created_at
-    }, 'id');
+    // ── NEW: INSERT and let Supabase generate the UUID ──
+    try {
+      const { data, error } = await sb.from('projects')
+        .insert({
+          user_id: USER_ID,
+          name,
+          description: description || '',
+          status,
+          related_category: related_category || '',
+          logged_dates: [],
+          created_at: new Date().toISOString()
+        })
+        .select('*')
+        .single();
+      if (error) throw error;
+      // Store the real Supabase UUID locally
+      const newProj = { ...data, logged_dates: data.logged_dates || [] };
+      allProjects.push(newProj);
+      saveLocal('msilas-projs', allProjects);
+      setSynced();
+    } catch(e) {
+      console.error('Project insert failed:', e);
+      // Offline fallback — use a UUID-compatible temp id
+      const tempId = (typeof crypto !== 'undefined' && crypto.randomUUID)
+        ? crypto.randomUUID()
+        : 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => {
+            const r = Math.random() * 16 | 0;
+            return (c === 'x' ? r : (r & 0x3 | 0x8)).toString(16);
+          });
+      const newProj = {
+        id: tempId, user_id: USER_ID, name,
+        description: description || '', status,
+        related_category: related_category || '',
+        logged_dates: [], created_at: new Date().toISOString()
+      };
+      allProjects.push(newProj);
+      saveLocal('msilas-projs', allProjects);
+      setOffline();
+    }
   }
 
   closeModal('projectModal');
   editingProject = null;
   renderProjects();
+  syncToAiProductivityTable(); // fire and forget
 }
 
 async function handleDeleteProject(id) {
@@ -719,6 +777,7 @@ async function handleDeleteProject(id) {
   saveLocal('msilas-projs', allProjects);
   try { await sb.from('projects').delete().eq('id', id).eq('user_id', USER_ID); } catch(e) { console.error(e); }
   renderProjects();
+  await syncToAiProductivityTable();
 }
 
 function openModal(id)  { document.getElementById(id).classList.add('open'); }
@@ -875,6 +934,7 @@ function handleMapMouseUp() {
   
   saveLocal('msilas-skills', allSkills);
   draggedNode = null;
+  syncToAiProductivityTable();
   setTimeout(() => { hasDraggedSignificant = false; }, 50);
 }
 
@@ -1025,6 +1085,7 @@ async function updateSkill() {
   editingSkillId = null;
   buildMap();
   toggleSkill(null);
+  await syncToAiProductivityTable();
 }
 
 async function deleteCurrentSkill() {
@@ -1043,6 +1104,7 @@ async function deleteCurrentSkill() {
   editingSkillId = null;
   buildMap();
   toggleSkill(null);
+  await syncToAiProductivityTable();
 }
 
 function openAddSkillModal() {
@@ -1091,6 +1153,7 @@ async function saveSkill() {
   closeModal('addSkillModal');
   buildMap();
   toggleSkill(null);
+  await syncToAiProductivityTable();
 }
 
 // ── Dashboard Lifecycle Initialization ──────────────────────────────
