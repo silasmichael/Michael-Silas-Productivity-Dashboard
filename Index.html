@@ -573,6 +573,9 @@ function autoTrackProjects(category, date) {
     renderProjects();
     
     updatedProjects.forEach(p => {
+      // Fix: Serialize array to JSON format or Postgres text array syntax explicitly
+      const datePayload = Array.isArray(p.logged_dates) ? JSON.stringify(p.logged_dates) : '[]';
+      
       syncToSupabase('projects', {
         id: p.id,
         user_id: USER_ID,
@@ -580,9 +583,9 @@ function autoTrackProjects(category, date) {
         description: p.description || '',
         status: p.status,
         related_category: p.related_category || '',
-        logged_dates: p.logged_dates,
+        logged_dates: datePayload,
         created_at: p.created_at
-      }, 'id,user_id');
+      }, 'id,user_id'); // Match target rule constraint tracking parameters
     });
   }
 }
@@ -697,6 +700,9 @@ function saveProject() {
   saveLocal('msilas-projs', allProjects);
   
   if (projToSync) {
+    // Fix: Strict fallback data validation layout mapping matching exact targets rule parameters
+    const mappedDates = Array.isArray(projToSync.logged_dates) ? JSON.stringify(projToSync.logged_dates) : '[]';
+    
     syncToSupabase('projects', { 
       id: projToSync.id,
       user_id: USER_ID, 
@@ -704,9 +710,9 @@ function saveProject() {
       description: projToSync.description || '',
       status: projToSync.status,
       related_category: projToSync.related_category || '',
-      logged_dates: projToSync.logged_dates || [],
+      logged_dates: mappedDates, 
       created_at: projToSync.created_at
-    }, 'id,user_id');
+    }, 'id,user_id'); 
   }
 
   closeModal('projectModal');
@@ -717,7 +723,15 @@ function saveProject() {
 async function handleDeleteProject(id) {
   allProjects = allProjects.filter(p => p.id !== id);
   saveLocal('msilas-projs', allProjects);
-  try { await sb.from('projects').delete().eq('id', id).eq('user_id', USER_ID); } catch(e) { console.error(e); }
+  try { 
+    setSyncing();
+    const { error } = await sb.from('projects').delete().eq('id', id).eq('user_id', USER_ID); 
+    if (error) throw error;
+    setSynced();
+  } catch(e) { 
+    console.error("Project deletion pipeline failure:", e); 
+    setOffline();
+  }
   renderProjects();
 }
 
@@ -1113,12 +1127,19 @@ async function init() {
 
     const { data: projData } = await sb.from('projects').select('*').eq('user_id', USER_ID).order('created_at');
     if (projData && projData.length > 0) {
-      allProjects = projData.map(p => ({ 
-        ...p, 
-        description: p.description || '', 
-        related_category: p.related_category || '',
-        logged_dates: p.logged_dates || []
-      }));
+      allProjects = projData.map(p => {
+        let dates = p.logged_dates;
+        // Fix: Parse JSON strings from database columns cleanly into runtime structures
+        if (typeof dates === 'string') {
+          try { dates = JSON.parse(dates); } catch(e) { dates = []; }
+        }
+        return { 
+          ...p, 
+          description: p.description || '', 
+          related_category: p.related_category || '',
+          logged_dates: Array.isArray(dates) ? dates : []
+        };
+      });
       saveLocal('msilas-projs', allProjects);
     }
 
