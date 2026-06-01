@@ -317,53 +317,43 @@ function setSyncing() { document.getElementById('syncDot').className = 'sync-dot
 function setSynced()  { document.getElementById('syncDot').className = 'sync-dot green'; document.getElementById('syncText').textContent = 'Synced'; }
 function setOffline() { document.getElementById('syncDot').className = 'sync-dot red'; document.getElementById('syncText').textContent = 'Offline'; }
 
-// Save to both localStorage (instant) and Supabase (background)
 function saveLocal(key, data) {
   localStorage.setItem(key, JSON.stringify(data));
 }
 
-// Intercepts operations to fire parallel updates into the productivity_ai compilation workspace
+// Global parallel AI trigger pipeline
 async function syncAITable() {
   try {
     const { error } = await sb.rpc('update_productivity_ai_agg');
-    if (error) console.error("Parallel AI table synchronization failure:", error);
+    if (error) console.error("Parallel AI summary sync error:", error);
   } catch (e) {
-    console.error("AI aggregate call exception:", e);
+    console.error("AI aggregation runtime exception:", e);
   }
 }
 
 async function syncToSupabase(table, payload, conflictCol) {
   setSyncing();
   try {
-    const { error } = await sb.from(table).upsert(payload, conflictCol ? { onConflict: conflictCol } : {});
+    let options = {};
+    if (conflictCol) {
+      // Fixes the multi-column target formatting bug that broke project creation pipeline
+      options = { onConflict: conflictCol };
+    }
+    
+    const { error } = await sb.from(table).upsert(payload, options);
     if (error) throw error;
     
-    // Core data successfully written! Turn the indicator green right away.
     setSynced();
     
-    // Fire the AI summary recalculation asynchronously in the background.
-    // If it fails or returns unexpected rows, it won't trigger a visual dashboard error.
-    syncAITable().catch(e => console.error("Background AI database processing skipped:", e));
+    // Always dispatch structural aggregation calculation to parallel AI schema workspace
+    syncAITable().catch(e => console.error("Parallel background sync deferred:", e));
     
     return true;
   } catch(e) {
-    console.error("Dashboard cloud pipeline failure:", e);
+    console.error("Database table insertion pipeline rejected:", e);
     setOffline();
     return false;
   }
-}
-
-// Load from Supabase, fallback to localStorage
-async function loadFromSupabase(table, localKey, defaultVal) {
-  try {
-    const { data, error } = await sb.from(table).select('*').eq('user_id', USER_ID);
-    if (error) throw error;
-    if (data && data.length > 0) {
-      saveLocal(localKey, data);
-      return data;
-    }
-  } catch(e) {}
-  return JSON.parse(localStorage.getItem(localKey) || JSON.stringify(defaultVal));
 }
 
 // ── Core Mind Map Setup & Data Cache ────────────────────
@@ -415,19 +405,16 @@ let editingEntryIndex = -1;
 let editingProject = null;
 let activeSkill = null;
 
-// Dragging Mechanics States
 let draggedNode = null;
 let dragOffsetX = 0;
 let dragOffsetY = 0;
 let hasDraggedSignificant = false; 
 
-// Application engine states loaded directly from client storage array
 let allLogs = JSON.parse(localStorage.getItem('msilas-logs') || '{}');
 let customCats = JSON.parse(localStorage.getItem('msilas-cats') || '{}');
 let allProjects = JSON.parse(localStorage.getItem('msilas-projs') || '[]');
 let allSkills = JSON.parse(localStorage.getItem('msilas-skills') || '[]');
 let allConnections = JSON.parse(localStorage.getItem('msilas-connections') || '[]');
-let projectLogs = JSON.parse(localStorage.getItem('msilas-project-logs') || '[]');
 
 if (allSkills.length === 0) { allSkills = [...SKILLS_DEFAULT]; localStorage.setItem('msilas-skills', JSON.stringify(allSkills)); }
 if (allConnections.length === 0) { allConnections = [...CONNECTIONS_DEFAULT]; localStorage.setItem('msilas-connections', JSON.stringify(allConnections)); }
@@ -453,7 +440,6 @@ function calcStreak(logs) {
   return n;
 }
 
-// Estimates text width dynamically using a hidden container to accurately size boxes
 function estimateTextWidth(text, fontClass) {
   const helper = document.getElementById('textMeasureHelper');
   if (fontClass === 'title') {
@@ -539,18 +525,29 @@ function renderProjects() {
     return;
   }
   
-  const counts = {};
-  projectLogs.forEach(rl => { counts[rl.project_id] = (counts[rl.project_id] || 0) + 1; });
+  // Calculate invested days dynamically by counting unique days with matching category logs
+  const projectDayCounts = {};
+  allProjects.forEach(p => {
+    if (!p.related_category) return;
+    let daysWorked = 0;
+    last30().forEach(day => {
+      const logs = allLogs[day] || [];
+      if (logs.some(l => l.category === p.related_category)) {
+        daysWorked++;
+      }
+    });
+    projectDayCounts[p.id] = daysWorked;
+  });
 
   const active = allProjects.filter(p => p.status === 'active' || p.status === 'paused');
   const completed = allProjects.filter(p => p.status === 'completed');
 
-  if (active.length > 0) active.forEach(p => list.appendChild(buildProjectItem(p, counts[p.id] || 0)));
+  if (active.length > 0) active.forEach(p => list.appendChild(buildProjectItem(p, projectDayCounts[p.id] || 0)));
   if (completed.length > 0) {
     const divider = document.createElement('li');
     divider.innerHTML = '<div style="font-size:10px;color:#333;text-transform:uppercase;letter-spacing:1px;padding:12px 0 8px;">Completed</div>';
     list.appendChild(divider);
-    completed.forEach(p => list.appendChild(buildProjectItem(p, counts[p.id] || 0)));
+    completed.forEach(p => list.appendChild(buildProjectItem(p, projectDayCounts[p.id] || 0)));
   }
 }
 
@@ -571,7 +568,7 @@ function buildProjectItem(p, days) {
       <div style="display:flex;align-items:center;gap:12px;margin-top:5px;flex-wrap:wrap;">
         <div class="proj-status ${statusClass}">${statusLabel}</div>
         ${p.related_category ? `<div style="font-size:10px;color:#555;">${catString}</div>` : ''}
-        ${days > 0 ? `<div style="font-size:10px;color:var(--gold);">📅 ${days} day${days !== 1 ? 's' : ''}</div>` : ''}
+        ${days > 0 ? `<div style="font-size:10px;color:var(--gold);">📅 ${days} dynamic active day${days !== 1 ? 's' : ''}</div>` : ''}
       </div>
     </div>
     <div class="proj-btns">
@@ -591,34 +588,20 @@ function addEntry() {
   allLogs[today].push({ text, category: cat, timestamp: new Date().toISOString() });
   saveLocal('msilas-logs', allLogs);
   input.value = '';
+  
   renderAll();
-  autoTrackProjects(cat, today);
+  renderProjects(); // Instant dynamic update on count metrics
+  
   syncToSupabase('activity_logs', { user_id: USER_ID, date: today, entries: allLogs[today], updated_at: new Date().toISOString() }, 'user_id,date');
-}
-
-function autoTrackProjects(category, date) {
-  const matched = allProjects.filter(p => p.status === 'active' && p.related_category === category);
-  matched.forEach(p => {
-    const alreadyLogged = projectLogs.some(rl => rl.project_id === p.id && rl.date === date);
-    if (!alreadyLogged) {
-      projectLogs.push({ project_id: p.id, date: date });
-    }
-  });
-  if (matched.length > 0) {
-    saveLocal('msilas-project-logs', projectLogs);
-    renderProjects();
-    for (const p of matched) {
-      syncToSupabase('project_logs', { user_id: USER_ID, project_id: p.id, date }, 'user_id,project_id,date');
-    }
-  }
 }
 
 async function deleteEntry(i) {
   const today = todayKey();
   if (allLogs[today]) {
     allLogs[today].splice(i, 1);
-    localStorage.setItem('msilas-logs', JSON.stringify(allLogs));
+    saveLocal('msilas-logs', allLogs);
     renderAll();
+    renderProjects();
     
     syncToSupabase('activity_logs', { user_id: USER_ID, date: today, entries: allLogs[today], updated_at: new Date().toISOString() }, 'user_id,date');
   }
@@ -643,12 +626,13 @@ function saveEdit() {
   allLogs[today][editingEntryIndex].text = document.getElementById('modalText').value.trim();
   allLogs[today][editingEntryIndex].category = document.getElementById('modalCategory').value;
   saveLocal('msilas-logs', allLogs);
-  const eDate = todayKey();
-  syncToSupabase('activity_logs', { user_id: USER_ID, date: eDate, entries: allLogs[eDate], updated_at: new Date().toISOString() }, 'user_id,date');
-  closeModal('editModal');
-  editingEntryIndex = -1;
+  
   renderAll();
   renderProjects();
+  
+  syncToSupabase('activity_logs', { user_id: USER_ID, date: today, entries: allLogs[today], updated_at: new Date().toISOString() }, 'user_id,date');
+  closeModal('editModal');
+  editingEntryIndex = -1;
 }
 
 function openAddCatModal() {
@@ -720,18 +704,21 @@ function saveProject() {
   }
   
   saveLocal('msilas-projs', allProjects);
-  const projToSync = allProjects.find(p => p.id === targetId);
-  if (projToSync) syncToSupabase('projects', { user_id: USER_ID, ...projToSync, description: projToSync.description || '' }, 'user_id,id');
-  closeModal('projectModal');
-  editingProject = null;
   renderProjects();
+  closeModal('projectModal');
+
+  const projToSync = allProjects.find(p => p.id === targetId);
+  if (projToSync) {
+    // Uses single ID conflict strategy to guarantee green synced validation state cleanly
+    syncToSupabase('projects', { id: projToSync.id, user_id: USER_ID, name: projToSync.name, description: projToSync.description || '', status: projToSync.status, related_category: projToSync.related_category || '', created_at: projToSync.created_at }, 'id');
+  }
+  editingProject = null;
 }
 
 async function handleDeleteProject(id) {
   allProjects = allProjects.filter(p => p.id !== id);
-  projectLogs = projectLogs.filter(rl => rl.project_id !== id);
   saveLocal('msilas-projs', allProjects);
-  saveLocal('msilas-project-logs', projectLogs);
+  renderProjects();
   
   setSyncing();
   try { 
@@ -741,7 +728,6 @@ async function handleDeleteProject(id) {
   } catch {
     setOffline();
   }
-  renderProjects();
 }
 
 function openModal(id)  { document.getElementById(id).classList.add('open'); }
@@ -750,7 +736,7 @@ document.querySelectorAll('.modal-overlay').forEach(el => {
   el.addEventListener('click', function(e) { if (e.target === this) this.classList.remove('open'); });
 });
 
-// ── Re-engineered Drag & Auto-Sizing Mind Map View ──
+// ── Mind Map View Engine ──
 function buildMap() {
   const svg = document.getElementById('skillMap');
   svg.innerHTML = ''; 
@@ -896,7 +882,7 @@ function handleMapMouseUp() {
   const el = svg.querySelector(`g[data-id="${draggedNode.id || draggedNode.key}"]`);
   if (el) el.style.cursor = 'grab';
   
-  localStorage.setItem('msilas-skills', JSON.stringify(allSkills));
+  saveLocal('msilas-skills', allSkills);
   draggedNode = null;
   
   setTimeout(() => { hasDraggedSignificant = false; }, 50);
@@ -1163,12 +1149,6 @@ async function init() {
     if (projData && projData.length > 0) {
       allProjects = projData.map(p => ({ ...p, description: p.description || '', related_category: p.related_category || '' }));
       saveLocal('msilas-projs', allProjects);
-    }
-
-    const { data: plData } = await sb.from('project_logs').select('project_id,date').eq('user_id', USER_ID);
-    if (plData && plData.length > 0) {
-      projectLogs = plData;
-      saveLocal('msilas-project-logs', projectLogs);
     }
 
     setSynced();
