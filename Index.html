@@ -160,16 +160,17 @@
   .pick-item label { font-size:13px; color:var(--text); cursor:pointer; flex:1; }
   .pick-item label small { display:block; font-size:10px; color:#555; margin-top:1px; }
 
-
+  /* Category Badges Styling */
   .cat-list { display:flex; flex-wrap:wrap; gap:6px; padding:8px 0; }
-  .cat-badge { display:inline-flex; align-items:center; gap:5px; background:var(--bg2); border:1px solid var(--border); border-radius:20px; padding:4px 10px; font-size:11px; color:var(--text); }
+  .cat-badge { display:inline-flex; align-items:center; gap:5px; background:var(--bg2); border:1px solid var(--border); border-radius:20px; padding:4px 10px; font-size:11px; color:var(--text); transition:border-color 0.2s, color 0.2s; }
   .cat-badge.default { opacity:0.5; cursor:default; }
   .cat-badge.custom { cursor:pointer; }
   .cat-badge.custom:hover { border-color:var(--gold); color:var(--gold); }
   .cat-badge-edit { background:none; border:none; color:#555; font-size:11px; cursor:pointer; padding:0 0 0 3px; line-height:1; transition:color 0.2s; }
-  .cat-badge-edit:hover { color:var(--gold); }
+  .cat-badge.custom:hover .cat-badge-edit { color:var(--gold); }
+  .cat-badge-edit:hover { color:#fff; }
 
-
+  /* Manage Categories Modal Styling */
   .cat-manage-item { display:flex; align-items:center; gap:10px; padding:10px 12px; background:var(--bg2); border:1px solid var(--border); border-radius:8px; margin-bottom:6px; }
   .cat-manage-icon { font-size:18px; flex-shrink:0; }
   .cat-manage-label { flex:1; font-size:13px; color:var(--text); }
@@ -234,23 +235,7 @@
   </div>
 </div>
 
-<div class="modal-overlay" id="editCatModal">
-  <div class="modal">
-    <div class="modal-title">Edit Category</div>
-    <label class="modal-label">Category name</label>
-    <input type="text" class="modal-input" id="editCatName" placeholder="Category name" maxlength="30">
-    <label class="modal-label">Icon</label>
-    <div class="emoji-picker" id="editEmojiPicker"></div>
-    <input type="text" class="modal-input" id="editCatIcon" placeholder="Or type any emoji..." maxlength="4" style="margin-top:8px;">
-    <div class="modal-btns" style="margin-top:4px;">
-      <button class="modal-cancel" style="background:#1a0a0a;border-color:#4a1a1a;color:#cc4444;" onclick="deleteCurrentCategory()">Delete</button>
-      <button class="modal-cancel" onclick="closeModal('editCatModal')">Cancel</button>
-      <button class="modal-save" onclick="updateCategory()">Save</button>
-    </div>
-  </div>
-</div>
-
-<!-- MANAGE CATEGORIES MODAL -->
+<!-- MANAGE CATEGORIES MODAL (List + Add New) -->
 <div class="modal-overlay" id="addCatModal">
   <div class="modal" style="max-height:90vh;overflow-y:auto;">
     <div class="modal-title">Categories</div>
@@ -273,16 +258,17 @@
   </div>
 </div>
 
-<!-- EDIT CATEGORY MODAL -->
+<!-- EDIT EXISTING CATEGORY MODAL -->
 <div class="modal-overlay" id="editCatModal">
   <div class="modal">
     <div class="modal-title">Edit Category</div>
     <label class="modal-label">Category name</label>
     <input type="text" class="modal-input" id="editCatName" placeholder="Category name" maxlength="30">
-    <label class="modal-label">Pick an icon</label>
+    <label class="modal-label">Icon</label>
     <div class="emoji-picker" id="editEmojiPicker"></div>
     <input type="text" class="modal-input" id="editCatIcon" placeholder="Or type any emoji..." maxlength="4" style="margin-top:8px;">
-    <div class="modal-btns" style="margin-top:10px;">
+    <div class="modal-btns" style="margin-top:14px;">
+      <button class="modal-cancel" style="background:#1a0a0a;border-color:#4a1a1a;color:#cc4444;" onclick="deleteCurrentCategory()">Delete</button>
       <button class="modal-cancel" onclick="closeModal('editCatModal')">Cancel</button>
       <button class="modal-save" onclick="saveEditCategory()">Save</button>
     </div>
@@ -398,9 +384,6 @@ async function syncToSupabase(table, payload, conflictCol) {
   }
 }
 
-// AI table is synced automatically by DB triggers — no JS needed
-function syncToAiProductivityTable() { /* handled by DB trigger */ }
-
 // ── Default Categories & Mind Map Objects ────────────────────
 const HABITS_DEFAULT = {
   writing:      { label:"Writing / Editing",   icon:"✍️" },
@@ -442,14 +425,14 @@ const CONNECTIONS_DEFAULT = [
   { from:"faith",     to:"writing",    label:"Questions worth asking" },
 ];
 
-const EMOJI_OPTIONS = ['🎯','🔥','💡','🎙️','🙏','💪','🧘','🏃','🎵','✏️','🎤','📝','🧠','💬','🌱','⭐','🎓','🛠️','📊','💼'];
+const EMOJI_OPTIONS = ['🎯','🔥','💡','🎙️','🙏','💪','🧘','🏃','🎵','✏️','🎤','📝','🧠','💬','🌱','⭐','🎓','🛠️','📊','💼', '✍️','🎬','🎨','💻','📖','🤝','📱','🎁','📚','🌍','⚡'];
 
 let selectedEmoji = '⭐';
+let editingCatEmoji = '⭐';
 let editingSkillId = null;
 let editingEntryIndex = -1;
 let editingProject = null;
 let editingCatKey = null;
-let editingCatEmoji = '⭐';
 let activeSkill = null;
 
 let draggedNode = null;
@@ -673,7 +656,7 @@ function autoTrackProjects(category, date) {
         created_at: p.created_at
       }, 'id');
     });
-    }
+  }
 }
 
 async function deleteEntry(i) {
@@ -683,7 +666,7 @@ async function deleteEntry(i) {
     saveLocal('msilas-logs', allLogs);
     renderAll();
     await syncToSupabase('activity_logs', { user_id: USER_ID, date: today, entries: allLogs[today], updated_at: new Date().toISOString() }, 'user_id,date');
-    }
+  }
 }
 
 function openEditEntry(i) {
@@ -715,6 +698,28 @@ function saveEdit() {
 
 
 // ── Category management ───────────────────────
+
+function renderCatList() {
+  const wrap = document.getElementById('catListWrap');
+  if (!wrap) return;
+  const defaults = Object.keys(HABITS_DEFAULT);
+  const all = allHabits();
+  
+  const html = Object.entries(all).map(([key, val]) => {
+    const isDefault = defaults.includes(key);
+    if (isDefault) {
+      return `<span class="cat-badge default">${val.icon} ${val.label}</span>`;
+    }
+    // Custom Categories get an edit trigger
+    return `<span class="cat-badge custom" onclick="openEditCatModal('${key}')">
+      ${val.icon} ${val.label}
+      <button class="cat-badge-edit" onclick="event.stopPropagation();openEditCatModal('${key}')">✎</button>
+      </span>`;
+  }).join('');
+  
+  wrap.innerHTML = `<div class="cat-list">${html}</div>`;
+}
+
 function renderCatManageList() {
   const el = document.getElementById('catManageList');
   if (!el) return;
@@ -736,16 +741,22 @@ function renderCatManageList() {
     div.className = 'cat-manage-item';
     div.innerHTML = '<span class="cat-manage-icon">' + val.icon + '</span>' +
       '<div style="flex:1;"><div class="cat-manage-label">' + val.label + '</div></div>';
+    
     const editBtn = document.createElement('button');
     editBtn.className = 'icon-btn';
     editBtn.textContent = '✎';
     editBtn.title = 'Edit';
-    editBtn.addEventListener('click', () => openEditCategory(key));
+    editBtn.addEventListener('click', () => {
+      closeModal('addCatModal'); // close parent modal if open
+      openEditCatModal(key);
+    });
+    
     const delBtn = document.createElement('button');
     delBtn.className = 'icon-btn del';
     delBtn.textContent = '×';
     delBtn.title = 'Delete';
     delBtn.addEventListener('click', () => deleteCategory(key));
+    
     div.appendChild(editBtn);
     div.appendChild(delBtn);
     el.appendChild(div);
@@ -759,12 +770,12 @@ function renderCatManageList() {
   }
 }
 
-function openEditCategory(key) {
+function openEditCatModal(key) {
   const cat = customCats[key];
   if (!cat) return;
   editingCatKey = key;
   editingCatEmoji = cat.icon;
-  document.getElementById('editCatName').value = cat.label;
+  document.getElementById('editCatName').value = cat.label || '';
   document.getElementById('editCatIcon').value = '';
 
   const picker = document.getElementById('editEmojiPicker');
@@ -773,7 +784,7 @@ function openEditCategory(key) {
     const span = document.createElement('span');
     span.className = 'emoji-opt' + (e === editingCatEmoji ? ' selected' : '');
     span.textContent = e;
-    span.addEventListener('click', function() { selectEditEmoji(e, this); });
+    span.addEventListener('click', function() { editSelectEmoji(e, this); });
     picker.appendChild(span);
   });
 
@@ -781,7 +792,7 @@ function openEditCategory(key) {
   setTimeout(() => document.getElementById('editCatName').focus(), 100);
 }
 
-function selectEditEmoji(emoji, el) {
+function editSelectEmoji(emoji, el) {
   editingCatEmoji = emoji;
   document.querySelectorAll('#editEmojiPicker .emoji-opt').forEach(e => e.classList.remove('selected'));
   el.classList.add('selected');
@@ -802,10 +813,13 @@ function saveEditCategory() {
   editingCatKey = null;
   populateSelects();
   renderCatManageList();
+  renderCatList();
 }
 
 async function deleteCategory(key) {
   if (!customCats[key]) return;
+  if (!confirm('Delete this category? Activities already logged with it will keep their data.')) return;
+  
   delete customCats[key];
   saveLocal('msilas-cats', customCats);
 
@@ -815,6 +829,15 @@ async function deleteCategory(key) {
 
   populateSelects();
   renderCatManageList();
+  renderCatList();
+}
+
+// Handler directly hooked to the "Delete" button inside the edit modal
+function deleteCurrentCategory() {
+  if (!editingCatKey) return;
+  deleteCategory(editingCatKey);
+  closeModal('editCatModal');
+  editingCatKey = null;
 }
 
 function openAddCatModal() {
@@ -848,13 +871,11 @@ function saveNewCategory() {
   document.getElementById('newCatName').value = '';
   document.getElementById('newCatIcon').value = '';
   selectedEmoji = '⭐';
+  
   populateSelects();
   renderCatManageList();
-  // Keep modal open so user can add more or close manually
   renderCatList();
 }
-
-
 
 
 function openProjectModal(id) {
@@ -882,7 +903,6 @@ function openProjectModal(id) {
   openModal('projectModal');
   setTimeout(() => document.getElementById('projName').focus(), 100);
 }
-
 
 // ── Project modal pickers ─────────────────────
 function buildProjectPickers(selectedSkills, selectedCats) {
@@ -1401,80 +1421,10 @@ async function init() {
   populateSelects();
   renderAll();
   renderProjects();
+  renderCatList(); // Draw the list of pill-badges underneath the entry area
 }
 
 init();
 </script>
 </body>
 </html>
-// ── Category management ────────────────────────
-function renderCatList() {
-  const wrap = document.getElementById('catListWrap');
-  if (!wrap) return;
-  const defaults = Object.keys(HABITS_DEFAULT);
-  const all = allHabits();
-  const html = Object.entries(all).map(([key, val]) => {
-    const isDefault = defaults.includes(key);
-    if (isDefault) {
-      return '<span class="cat-badge default">' + val.icon + ' ' + val.label + '</span>';
-    }
-    return '<span class="cat-badge custom" onclick="openEditCatModal('' + key + '')">' +
-      val.icon + ' ' + val.label +
-      '<button class="cat-badge-edit" onclick="event.stopPropagation();openEditCatModal('' + key + '')">✎</button>' +
-      '</span>';
-  }).join('');
-  wrap.innerHTML = '<div class="cat-list">' + html + '</div>';
-}
-
-function openEditCatModal(key) {
-  const cat = customCats[key];
-  if (!cat) return;
-  editingCatKey = key;
-  editSelectedEmoji = cat.icon;
-  document.getElementById('editCatName').value = cat.label || '';
-  document.getElementById('editCatIcon').value = '';
-  const EMOJI_OPTIONS = ['✍️','🎬','🎨','💻','📖','🤝','📱','🎁','📚','🌍','⚡','🎯','🔥','💡','🎙️','🙏','💪','🧘','🏃','🎵','✏️','🧠','💬','🌱','⭐','🎓','🛠️','📊','💼'];
-  document.getElementById('editEmojiPicker').innerHTML = EMOJI_OPTIONS.map(e =>
-    '<span class="emoji-opt' + (e === cat.icon ? ' selected' : '') + '" onclick="editSelectEmoji('' + e + '',this)">' + e + '</span>'
-  ).join('');
-  openModal('editCatModal');
-  setTimeout(() => document.getElementById('editCatName').focus(), 100);
-}
-
-function editSelectEmoji(emoji, el) {
-  editSelectedEmoji = emoji;
-  document.querySelectorAll('#editEmojiPicker .emoji-opt').forEach(e => e.classList.remove('selected'));
-  el.classList.add('selected');
-  document.getElementById('editCatIcon').value = '';
-}
-
-function updateCategory() {
-  if (!editingCatKey) return;
-  const name = document.getElementById('editCatName').value.trim();
-  if (!name) { document.getElementById('editCatName').focus(); return; }
-  const icon = document.getElementById('editCatIcon').value.trim() || editSelectedEmoji;
-  customCats[editingCatKey] = { label: name, icon };
-  saveLocal('msilas-cats', customCats);
-  syncToSupabase('custom_categories', { user_id: USER_ID, key: editingCatKey, label: name, icon }, 'user_id,key');
-  closeModal('editCatModal');
-  editingCatKey = null;
-  populateSelects();
-  renderCatList();
-  buildProjectPickers([], []);
-}
-
-async function deleteCurrentCategory() {
-  if (!editingCatKey) return;
-  if (!confirm('Delete this category? Activities already logged with it will keep their data.')) return;
-  delete customCats[editingCatKey];
-  saveLocal('msilas-cats', customCats);
-  try {
-    await sb.from('custom_categories').delete().eq('key', editingCatKey).eq('user_id', USER_ID);
-  } catch(e) { console.error('delete cat failed', e); }
-  closeModal('editCatModal');
-  editingCatKey = null;
-  populateSelects();
-  renderCatList();
-}
-
-
