@@ -150,6 +150,16 @@
   .link-dot { fill:#333; transition: fill 0.2s; }
   
   #textMeasureHelper { position:absolute; visibility:hidden; height:auto; width:auto; white-space:nowrap; }
+
+  /* Multi-select picker used in project modal */
+  .multi-pick { background:var(--bg2); border:1px solid var(--border); border-radius:8px; padding:10px 12px; margin-bottom:14px; max-height:160px; overflow-y:auto; }
+  .multi-pick-empty { font-size:12px; color:#444; font-style:italic; }
+  .pick-item { display:flex; align-items:center; gap:10px; padding:6px 0; border-bottom:1px solid #1a1a1a; cursor:pointer; }
+  .pick-item:last-child { border-bottom:none; }
+  .pick-item input[type=checkbox] { width:15px; height:15px; accent-color:var(--gold); flex-shrink:0; cursor:pointer; }
+  .pick-item label { font-size:13px; color:var(--text); cursor:pointer; flex:1; }
+  .pick-item label small { display:block; font-size:10px; color:#555; margin-top:1px; }
+
 </style>
 </head>
 <body>
@@ -224,25 +234,22 @@
 </div>
 
 <div class="modal-overlay" id="projectModal">
-  <div class="modal" style="max-height: 90vh; overflow-y: auto;">
+  <div class="modal" style="max-height:90vh;overflow-y:auto;">
     <div class="modal-title" id="projModalTitle">New Project</div>
     <label class="modal-label">Project name</label>
     <input type="text" class="modal-input" id="projName" placeholder="e.g. Babel Animation, Unanswered Book...">
     <label class="modal-label">Short description (optional)</label>
     <input type="text" class="modal-input" id="projDesc" placeholder="What is this about?">
-    <label class="modal-label">Linked to Category (auto-tracks days)</label>
-    <select class="modal-select" id="projCategory"></select>
-    
-    <label class="modal-label">Related Skills (optional)</label>
-    <div id="projSkillsPicker" style="background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:12px;margin-bottom:14px;max-height:120px;overflow-y:auto;">
-      </div>
-
     <label class="modal-label">Status</label>
     <select class="modal-select" id="projStatus">
       <option value="active">🟢 Active</option>
       <option value="paused">🟡 Paused</option>
       <option value="completed">✅ Completed</option>
     </select>
+    <label class="modal-label">Related Skills</label>
+    <div class="multi-pick" id="projSkillPicker"><div class="multi-pick-empty">Loading skills...</div></div>
+    <label class="modal-label">Related Categories <small style="font-style:italic;color:#555;">(auto-tracks days)</small></label>
+    <div class="multi-pick" id="projCatPicker"><div class="multi-pick-empty">Loading categories...</div></div>
     <div class="modal-btns">
       <button class="modal-cancel" onclick="closeModal('projectModal')">Cancel</button>
       <button class="modal-save" onclick="saveProject()">Save</button>
@@ -526,11 +533,6 @@ function buildProjectItem(p) {
   const catString = habit ? `${habit.icon} ${habit.label}` : p.related_category;
   const daysCount = p.logged_dates ? p.logged_dates.length : 0;
   
-  // New Skills Indicator for Project Card
-  const skillsString = (p.related_skills && p.related_skills.length > 0)
-    ? `<div style="font-size:10px;color:#888;">🧠 ${p.related_skills.length} skill${p.related_skills.length > 1 ? 's' : ''}</div>`
-    : '';
-  
   const li = document.createElement('li');
   li.className = 'project-item';
   li.innerHTML = `
@@ -540,9 +542,17 @@ function buildProjectItem(p) {
       ${p.description ? `<div class="proj-desc">${p.description}</div>` : ''}
       <div style="display:flex;align-items:center;gap:12px;margin-top:5px;flex-wrap:wrap;">
         <div class="proj-status ${statusClass}">${statusLabel}</div>
-        ${p.related_category ? `<div style="font-size:10px;color:#555;">${catString}</div>` : ''}
+        ${(() => {
+          const cats = Array.isArray(p.related_categories) && p.related_categories.length > 0
+            ? p.related_categories
+            : (p.related_category ? [p.related_category] : []);
+          const skills = Array.isArray(p.related_skills) && p.related_skills.length > 0 ? p.related_skills : [];
+          const catLabels = cats.map(c => { const h = allHabits()[c]; return h ? h.icon + ' ' + h.label : c; }).join(', ');
+          const skillLabels = skills.map(sid => { const s = allSkills.find(sk => (sk.id||sk.key) === sid); return s ? s.label : sid; }).join(', ');
+          return (catLabels ? `<div style="font-size:10px;color:#555;">📂 ${catLabels}</div>` : '') +
+                 (skillLabels ? `<div style="font-size:10px;color:#555;margin-top:2px;">🎯 ${skillLabels}</div>` : '');
+        })()}
         ${daysCount > 0 ? `<div style="font-size:10px;color:var(--gold);">📅 ${daysCount} day${daysCount !== 1 ? 's' : ''}</div>` : ''}
-        ${skillsString}
       </div>
     </div>
     <div class="proj-btns">
@@ -571,13 +581,17 @@ function autoTrackProjects(category, date) {
   let updatedProjects = [];
 
   allProjects = allProjects.map(p => {
-    if (p.status === 'active' && p.related_category === category) {
-      if (!p.logged_dates) p.logged_dates = [];
-      if (!p.logged_dates.includes(date)) {
-        const updatedProj = { ...p, logged_dates: [...p.logged_dates, date] };
-        updatedProjects.push(updatedProj);
-        return updatedProj;
-      }
+    if (p.status !== 'active') return p;
+    // Support both old related_category and new related_categories array
+    const cats = Array.isArray(p.related_categories) && p.related_categories.length > 0
+      ? p.related_categories
+      : (p.related_category ? [p.related_category] : []);
+    if (!cats.includes(category)) return p;
+    if (!p.logged_dates) p.logged_dates = [];
+    if (!p.logged_dates.includes(date)) {
+      const updatedProj = { ...p, logged_dates: [...p.logged_dates, date] };
+      updatedProjects.push(updatedProj);
+      return updatedProj;
     }
     return p;
   });
@@ -594,8 +608,9 @@ function autoTrackProjects(category, date) {
         description: p.description || '',
         status: p.status,
         related_category: p.related_category || '',
-        logged_dates: p.logged_dates,
+        related_categories: p.related_categories || [],
         related_skills: p.related_skills || [],
+        logged_dates: p.logged_dates,
         created_at: p.created_at
       }, 'id');
     });
@@ -669,57 +684,87 @@ function saveNewCategory() {
   populateSelects();
 }
 
+
+
+
 function openProjectModal(id) {
   editingProject = id ? id : null;
-  populateSelects();
   document.getElementById('projModalTitle').textContent = id ? 'Edit Project' : 'New Project';
-  
-  let currentSkills = [];
-
   if (id) {
     const p = allProjects.find(item => item.id === id);
     if (p) {
       document.getElementById('projName').value = p.name || '';
       document.getElementById('projDesc').value = p.description || '';
       document.getElementById('projStatus').value = p.status || 'active';
-      document.getElementById('projCategory').value = p.related_category || '';
-      currentSkills = p.related_skills || [];
+      buildProjectPickers(
+        Array.isArray(p.related_skills) ? p.related_skills : [],
+        Array.isArray(p.related_categories) && p.related_categories.length > 0
+          ? p.related_categories
+          : (p.related_category ? [p.related_category] : [])
+      );
     }
   } else {
     document.getElementById('projName').value = '';
     document.getElementById('projDesc').value = '';
     document.getElementById('projStatus').value = 'active';
-    document.getElementById('projCategory').value = '';
+    buildProjectPickers([], []);
   }
-
-  // Populate dynamic skills picker inside project modal
-  const picker = document.getElementById('projSkillsPicker');
-  picker.innerHTML = allSkills.map(s => {
-    const sid = s.id || s.key;
-    const isChecked = currentSkills.includes(sid) ? 'checked' : '';
-    return `<div class="skill-conn-item" style="padding: 4px 0;">
-      <input type="checkbox" class="skill-conn-check proj-skill-check" id="proj_skill_${sid}" value="${sid}" ${isChecked}>
-      <label class="skill-conn-label" for="proj_skill_${sid}" style="margin-left: 8px; cursor: pointer;">${s.label}</label>
-    </div>`;
-  }).join('');
-
   openModal('projectModal');
   setTimeout(() => document.getElementById('projName').focus(), 100);
+}
+
+
+// ── Project modal pickers ─────────────────────
+function buildProjectPickers(selectedSkills, selectedCats) {
+  selectedSkills = selectedSkills || [];
+  selectedCats   = selectedCats   || [];
+
+  // Skills picker
+  const skillPicker = document.getElementById('projSkillPicker');
+  const src = allSkills.length > 0 ? allSkills : SKILLS_DEFAULT;
+  if (src.length === 0) {
+    skillPicker.innerHTML = '<div class="multi-pick-empty">No skills yet.</div>';
+  } else {
+    skillPicker.innerHTML = src.map(s => {
+      const sid = s.id || s.key;
+      const checked = selectedSkills.includes(sid) ? 'checked' : '';
+      return '<div class="pick-item">' +
+        '<input type="checkbox" id="psk_' + sid + '" value="' + sid + '" ' + checked + '>' +
+        '<label for="psk_' + sid + '">' + s.label + '<small>' + (s.sub || '') + '</small></label>' +
+        '</div>';
+    }).join('');
+  }
+
+  // Categories picker
+  const catPicker = document.getElementById('projCatPicker');
+  const habits = allHabits();
+  catPicker.innerHTML = Object.entries(habits).map(([key, val]) => {
+    const checked = selectedCats.includes(key) ? 'checked' : '';
+    return '<div class="pick-item">' +
+      '<input type="checkbox" id="pcat_' + key + '" value="' + key + '" ' + checked + '>' +
+      '<label for="pcat_' + key + '">' + val.icon + ' ' + val.label + '</label>' +
+      '</div>';
+  }).join('');
+}
+
+function getPickerValues(prefix) {
+  return Array.from(document.querySelectorAll('#' + prefix + ' input[type=checkbox]:checked'))
+    .map(cb => cb.value);
 }
 
 async function saveProject() {
   const name = document.getElementById('projName').value.trim();
   if (!name) { document.getElementById('projName').focus(); return; }
-  const status = document.getElementById('projStatus').value;
-  const description = document.getElementById('projDesc').value.trim();
-  const related_category = document.getElementById('projCategory').value;
-
-  // Extract checked skills from the new UI
-  const related_skills = Array.from(document.querySelectorAll('#projSkillsPicker .proj-skill-check:checked')).map(cb => cb.value);
+  const status       = document.getElementById('projStatus').value;
+  const description  = document.getElementById('projDesc').value.trim();
+  const related_skills     = getPickerValues('projSkillPicker');
+  const related_categories = getPickerValues('projCatPicker');
+  // Keep backward compat: first category becomes related_category
+  const related_category   = related_categories[0] || '';
 
   if (editingProject) {
     allProjects = allProjects.map(p => p.id === editingProject
-      ? { ...p, name, description, status, related_category, related_skills }
+      ? { ...p, name, description, status, related_skills, related_categories, related_category }
       : p);
     saveLocal('msilas-projs', allProjects);
     const proj = allProjects.find(p => p.id === editingProject);
@@ -729,9 +774,10 @@ async function saveProject() {
       name,
       description: description || '',
       status,
-      related_category: related_category || '',
-      logged_dates: proj.logged_dates || [],
-      related_skills // Array of selected text skills
+      related_skills,
+      related_categories,
+      related_category,
+      logged_dates: proj.logged_dates || []
     }, 'id');
 
   } else {
@@ -748,9 +794,10 @@ async function saveProject() {
       name,
       description: description || '',
       status,
-      related_category: related_category || '',
+      related_skills,
+      related_categories,
+      related_category,
       logged_dates: [],
-      related_skills, // Array of selected text skills
       created_at: new Date().toISOString()
     };
     allProjects.push(newProj);
@@ -1166,8 +1213,9 @@ async function init() {
         ...p, 
         description: p.description || '', 
         related_category: p.related_category || '',
-        logged_dates: p.logged_dates || [],
-        related_skills: p.related_skills || []
+        related_categories: Array.isArray(p.related_categories) ? p.related_categories : [],
+        related_skills: Array.isArray(p.related_skills) ? p.related_skills : [],
+        logged_dates: p.logged_dates || []
       }));
       saveLocal('msilas-projs', allProjects);
     }
