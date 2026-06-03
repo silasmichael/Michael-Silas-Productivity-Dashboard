@@ -151,46 +151,20 @@
   
   #textMeasureHelper { position:absolute; visibility:hidden; height:auto; width:auto; white-space:nowrap; }
 
-  /* Multi-select picker used in project modal */
-  .multi-pick { background:var(--bg2); border:1px solid var(--border); border-radius:8px; padding:10px 12px; margin-bottom:14px; max-height:160px; overflow-y:auto; }
-  .multi-pick-empty { font-size:12px; color:#444; font-style:italic; }
-  .pick-item { display:flex; align-items:center; gap:10px; padding:6px 0; border-bottom:1px solid #1a1a1a; cursor:pointer; }
-  .pick-item:last-child { border-bottom:none; }
-  .pick-item input[type=checkbox] { width:15px; height:15px; accent-color:var(--gold); flex-shrink:0; cursor:pointer; }
-  .pick-item label { font-size:13px; color:var(--text); cursor:pointer; flex:1; }
-  .pick-item label small { display:block; font-size:10px; color:#555; margin-top:1px; }
-
-
-  .cat-list { display:flex; flex-wrap:wrap; gap:6px; padding:8px 0; }
-  .cat-badge { display:inline-flex; align-items:center; gap:5px; background:var(--bg2); border:1px solid var(--border); border-radius:20px; padding:4px 10px; font-size:11px; color:var(--text); }
-  .cat-badge.default { opacity:0.5; cursor:default; }
-  .cat-badge.custom { cursor:pointer; }
-  .cat-badge.custom:hover { border-color:var(--gold); color:var(--gold); }
-  .cat-badge-edit { background:none; border:none; color:#555; font-size:11px; cursor:pointer; padding:0 0 0 3px; line-height:1; transition:color 0.2s; }
-  .cat-badge-edit:hover { color:var(--gold); }
-
-
-  .cat-manage-item { display:flex; align-items:center; gap:10px; padding:10px 12px; background:var(--bg2); border:1px solid var(--border); border-radius:8px; margin-bottom:6px; }
-  .cat-manage-icon { font-size:18px; flex-shrink:0; }
-  .cat-manage-label { flex:1; font-size:13px; color:var(--text); }
-  .cat-manage-sub { font-size:10px; color:#444; }
-  .cat-default-badge { font-size:9px; color:#333; letter-spacing:1px; text-transform:uppercase; background:#1a1a1a; border:1px solid #2a2a2a; border-radius:10px; padding:2px 7px; }
-
-
   /* Entry form */
   .entry-form { margin-bottom:14px; }
-  .entry-selects { display:grid; grid-template-columns:1fr 1fr 1fr; gap:8px; margin:8px 0; }
+  .entry-selects { display:grid; grid-template-columns:1fr 1fr 1fr; gap:8px; margin:8px 0 10px; }
   .entry-select { background:var(--bg2); border:1px solid var(--border); border-radius:8px; padding:9px 10px; color:var(--text); font-size:11px; font-family:'Lora',serif; outline:none; cursor:pointer; appearance:none; width:100%; }
   .entry-select:focus { border-color:var(--gold); }
   .entry-select option { background:#1a1a1a; }
-
-  /* Category manage list */
-  .cat-manage-list { list-style:none; margin-bottom:8px; }
-  .cat-manage-list .cat-manage-item { display:flex; align-items:center; gap:10px; padding:11px 12px; background:var(--bg2); border:1px solid var(--border); border-radius:8px; margin-bottom:6px; }
-
-  /* Entry badges */
-  .entry-badges { display:flex; flex-wrap:wrap; gap:5px; margin-top:4px; }
-  .entry-badge { font-size:10px; color:#666; background:#1a1a1a; border:1px solid #222; border-radius:10px; padding:2px 8px; }
+  /* Entry badges on todo items */
+  .entry-badges { display:flex; flex-wrap:wrap; gap:4px; margin-top:3px; }
+  .entry-badge { font-size:10px; color:#666; background:#1a1a1a; border:1px solid #222; border-radius:10px; padding:2px 7px; }
+  /* Category manage list in dashboard */
+  .cat-section-list { list-style:none; margin-bottom:8px; }
+  .cat-section-item { display:flex; align-items:center; gap:10px; padding:11px 12px; background:var(--bg2); border:1px solid var(--border); border-radius:8px; margin-bottom:6px; }
+  .cat-section-icon { font-size:18px; flex-shrink:0; }
+  .cat-section-label { flex:1; font-size:13px; color:var(--text); }
 
 </style>
 </head>
@@ -254,78 +228,36 @@
   </div>
 </div>
 
-<div class="modal-overlay" id="editCatModal">
-  <div class="modal">
-    <div class="modal-title">Edit Category</div>
-    <label class="modal-label">Category name</label>
-    <input type="text" class="modal-input" id="editCatName" placeholder="Category name" maxlength="30">
-    <label class="modal-label">Icon</label>
-    <div class="emoji-picker" id="editEmojiPicker"></div>
-    <input type="text" class="modal-input" id="editCatIcon" placeholder="Or type any emoji..." maxlength="4" style="margin-top:8px;">
-    <div class="modal-btns" style="margin-top:4px;">
-      <button class="modal-cancel" style="background:#1a0a0a;border-color:#4a1a1a;color:#cc4444;" onclick="deleteCurrentCategory()">Delete</button>
-      <button class="modal-cancel" onclick="closeModal('editCatModal')">Cancel</button>
-      <button class="modal-save" onclick="updateCategory()">Save</button>
-    </div>
-  </div>
-</div>
-
-<!-- MANAGE CATEGORIES MODAL -->
 <div class="modal-overlay" id="addCatModal">
-  <div class="modal" style="max-height:90vh;overflow-y:auto;">
-    <div class="modal-title">Categories</div>
-
-    <!-- Existing custom categories list -->
-    <div id="catManageList" style="margin-bottom:16px;"></div>
-
-    <!-- Add new section -->
-    <div style="border-top:1px solid var(--border);padding-top:14px;">
-      <label class="modal-label">Add New Category</label>
-      <input type="text" class="modal-input" id="newCatName" placeholder="e.g. Podcast, Prayer, Exercise..." maxlength="30">
-      <label class="modal-label">Pick an icon</label>
-      <div class="emoji-picker" id="emojiPicker"></div>
-      <input type="text" class="modal-input" id="newCatIcon" placeholder="Or type any emoji..." maxlength="4" style="margin-top:8px;">
-      <div class="modal-btns" style="margin-top:10px;">
-        <button class="modal-cancel" onclick="closeModal('addCatModal')">Close</button>
-        <button class="modal-save" onclick="saveNewCategory()">Add</button>
-      </div>
-    </div>
-  </div>
-</div>
-
-<!-- EDIT CATEGORY MODAL -->
-<div class="modal-overlay" id="editCatModal">
   <div class="modal">
-    <div class="modal-title">Edit Category</div>
+    <div class="modal-title">New Category</div>
     <label class="modal-label">Category name</label>
-    <input type="text" class="modal-input" id="editCatName" placeholder="Category name" maxlength="30">
+    <input type="text" class="modal-input" id="newCatName" placeholder="e.g. Podcast, Prayer, Exercise..." maxlength="30">
     <label class="modal-label">Pick an icon</label>
-    <div class="emoji-picker" id="editEmojiPicker"></div>
-    <input type="text" class="modal-input" id="editCatIcon" placeholder="Or type any emoji..." maxlength="4" style="margin-top:8px;">
-    <div class="modal-btns" style="margin-top:10px;">
-      <button class="modal-cancel" onclick="closeModal('editCatModal')">Cancel</button>
-      <button class="modal-save" onclick="saveEditCategory()">Save</button>
+    <div class="emoji-picker" id="emojiPicker"></div>
+    <input type="text" class="modal-input" id="newCatIcon" placeholder="Or type any emoji..." maxlength="4" style="margin-top:8px;">
+    <div class="modal-btns" style="margin-top:4px;">
+      <button class="modal-cancel" onclick="closeModal('addCatModal')">Cancel</button>
+      <button class="modal-save" onclick="saveNewCategory()">Add</button>
     </div>
   </div>
 </div>
 
 <div class="modal-overlay" id="projectModal">
-  <div class="modal" style="max-height:90vh;overflow-y:auto;">
+  <div class="modal">
     <div class="modal-title" id="projModalTitle">New Project</div>
     <label class="modal-label">Project name</label>
     <input type="text" class="modal-input" id="projName" placeholder="e.g. Babel Animation, Unanswered Book...">
     <label class="modal-label">Short description (optional)</label>
     <input type="text" class="modal-input" id="projDesc" placeholder="What is this about?">
+    <label class="modal-label">Linked to Category (auto-tracks days)</label>
+    <select class="modal-select" id="projCategory"></select>
     <label class="modal-label">Status</label>
     <select class="modal-select" id="projStatus">
       <option value="active">🟢 Active</option>
       <option value="paused">🟡 Paused</option>
       <option value="completed">✅ Completed</option>
     </select>
-    <label class="modal-label">Related Skills</label>
-    <div class="multi-pick" id="projSkillPicker"><div class="multi-pick-empty">Loading skills...</div></div>
-    <label class="modal-label">Related Categories <small style="font-style:italic;color:#555;">(auto-tracks days)</small></label>
-    <div class="multi-pick" id="projCatPicker"><div class="multi-pick-empty">Loading categories...</div></div>
     <div class="modal-btns">
       <button class="modal-cancel" onclick="closeModal('projectModal')">Cancel</button>
       <button class="modal-save" onclick="saveProject()">Save</button>
@@ -363,46 +295,32 @@
     </div>
 
     <div class="desktop-right">
-
-      <!-- TODAY SECTION -->
       <div class="section">
         <div class="section-label">Today</div>
       </div>
-
-      <div class="entry-form">
-        <input type="text" class="add-input" id="activityInput" placeholder="Describe what you did..." onkeydown="if(event.key==='Enter') addEntry()">
-        <div class="entry-selects">
-          <select class="entry-select" id="entryCategory">
-            <option value="">📂 Category</option>
-          </select>
-          <select class="entry-select" id="entryProject">
-            <option value="">📌 Project</option>
-          </select>
-          <select class="entry-select" id="entrySkill">
-            <option value="">🎯 Skill</option>
-          </select>
-        </div>
-        <button class="add-btn" style="width:100%;border-radius:8px;padding:11px;" onclick="addEntry()">Log Entry</button>
+      <input type="text" class="add-input" id="activityInput"
+        placeholder="Describe what you did today..."
+        onkeydown="if(event.key==='Enter') addEntry()"
+        style="width:100%;margin-bottom:8px;display:block;">
+      <div class="entry-selects">
+        <select class="entry-select" id="entryCategory"><option value="">📂 Category</option></select>
+        <select class="entry-select" id="entryProject"><option value="">📌 Project</option></select>
+        <select class="entry-select" id="entrySkill"><option value="">🎯 Skill</option></select>
       </div>
-
+      <button class="add-proj-btn" style="width:100%;margin:6px 0 12px;" onclick="addEntry()">+ Log Entry</button>
       <ul class="todo-list" id="todoList"></ul>
       <div class="empty-state" id="emptyState">Nothing logged yet.</div>
 
-      <!-- 30 DAYS SECTION -->
       <div class="section" style="margin-top:16px;">
         <div class="section-label">Last 30 Days</div>
       </div>
       <div class="days-grid" id="daysGrid"></div>
 
-      <!-- CATEGORIES SECTION -->
       <div class="section" style="margin-top:16px;">
         <div class="section-label">Categories</div>
       </div>
-      <div id="catSection">
-        <ul class="cat-manage-list" id="catManageListMain"></ul>
-        <button class="add-proj-btn" onclick="openAddCatModal()">+ Add Category</button>
-      </div>
-
+      <ul class="cat-section-list" id="catSectionList"></ul>
+      <button class="add-proj-btn" onclick="openAddCatModal()">+ Add Category</button>
     </div>
   </div>
 </div>
@@ -439,8 +357,19 @@ async function syncToSupabase(table, payload, conflictCol) {
   }
 }
 
-// AI table is synced automatically by DB triggers — no JS needed
-function syncToAiProductivityTable() { /* handled by DB trigger */ }
+// Global composite saving payload builder for Master AI Table sync
+async function syncToAiProductivityTable() {
+  const masterPayload = {
+    user_id: USER_ID,
+    activity_logs: allLogs,
+    custom_categories: customCats,
+    projects: allProjects,
+    skills: allSkills,
+    skill_connections: allConnections,
+    updated_at: new Date().toISOString()
+  };
+  await syncToSupabase('productivity_ai_master', masterPayload, 'user_id');
+}
 
 // ── Default Categories & Mind Map Objects ────────────────────
 const HABITS_DEFAULT = {
@@ -489,8 +418,6 @@ let selectedEmoji = '⭐';
 let editingSkillId = null;
 let editingEntryIndex = -1;
 let editingProject = null;
-let editingCatKey = null;
-let editingCatEmoji = '⭐';
 let activeSkill = null;
 
 let draggedNode = null;
@@ -556,40 +483,6 @@ function populateSelects() {
   if (pSel) { const cur = pSel.value; pSel.innerHTML = projOpts; if (cur) pSel.value = cur; }
 }
 
-
-function renderCatSection() {
-  const el = document.getElementById('catManageListMain');
-  if (!el) return;
-  el.innerHTML = '';
-  const habits = allHabits();
-  if (Object.keys(habits).length === 0) {
-    const li = document.createElement('li');
-    li.style.cssText = 'color:#333;font-size:12px;font-style:italic;padding:8px 0;';
-    li.textContent = 'No categories yet. Add your first one.';
-    el.appendChild(li);
-    return;
-  }
-  Object.entries(habits).forEach(([key, val]) => {
-    const li = document.createElement('li');
-    li.className = 'cat-manage-item';
-    li.innerHTML = '<span class="cat-manage-icon">' + val.icon + '</span>' +
-      '<div style="flex:1;"><div class="cat-manage-label">' + val.label + '</div></div>';
-    const editBtn = document.createElement('button');
-    editBtn.className = 'icon-btn';
-    editBtn.textContent = '✎';
-    editBtn.title = 'Edit';
-    editBtn.addEventListener('click', () => openEditCategory(key));
-    const delBtn = document.createElement('button');
-    delBtn.className = 'icon-btn del';
-    delBtn.textContent = '×';
-    delBtn.title = 'Delete';
-    delBtn.addEventListener('click', () => deleteCategory(key));
-    li.appendChild(editBtn);
-    li.appendChild(delBtn);
-    el.appendChild(li);
-  });
-}
-
 function renderAll() {
   const today = todayKey();
   const entries = allLogs[today] || [];
@@ -612,15 +505,16 @@ function renderAll() {
     const habit = allHabits()[e.category] || HABITS_DEFAULT.other;
     const li = document.createElement('li');
     li.className = 'todo-item';
-    const proj = e.project_id ? allProjects.find(p => p.id === e.project_id) : null;
-    const skill = e.skill_id ? (allSkills.length > 0 ? allSkills : SKILLS_DEFAULT).find(s => (s.id||s.key) === e.skill_id) : null;
+    const proj  = e.project_id ? allProjects.find(p => p.id === e.project_id) : null;
+    const skillSrc = allSkills.length > 0 ? allSkills : SKILLS_DEFAULT;
+    const skill = e.skill_id  ? skillSrc.find(s => (s.id||s.key) === e.skill_id) : null;
     li.innerHTML = `
       <span class="todo-icon">${habit.icon}</span>
       <div class="todo-content">
         <div class="todo-cat">${habit.label}</div>
         <div class="todo-text">${e.text || '&mdash;'}</div>
         <div class="entry-badges">
-          ${proj ? `<span class="entry-badge">📌 ${proj.name}</span>` : ''}
+          ${proj  ? `<span class="entry-badge">📌 ${proj.name}</span>`  : ''}
           ${skill ? `<span class="entry-badge">🎯 ${skill.label}</span>` : ''}
         </div>
         <div class="todo-time">${fmtTime(e.timestamp)}</div>
@@ -682,16 +576,7 @@ function buildProjectItem(p) {
       ${p.description ? `<div class="proj-desc">${p.description}</div>` : ''}
       <div style="display:flex;align-items:center;gap:12px;margin-top:5px;flex-wrap:wrap;">
         <div class="proj-status ${statusClass}">${statusLabel}</div>
-        ${(() => {
-          const cats = Array.isArray(p.related_categories) && p.related_categories.length > 0
-            ? p.related_categories
-            : (p.related_category ? [p.related_category] : []);
-          const skills = Array.isArray(p.related_skills) && p.related_skills.length > 0 ? p.related_skills : [];
-          const catLabels = cats.map(c => { const h = allHabits()[c]; return h ? h.icon + ' ' + h.label : c; }).join(', ');
-          const skillLabels = skills.map(sid => { const s = allSkills.find(sk => (sk.id||sk.key) === sid); return s ? s.label : sid; }).join(', ');
-          return (catLabels ? `<div style="font-size:10px;color:#555;">📂 ${catLabels}</div>` : '') +
-                 (skillLabels ? `<div style="font-size:10px;color:#555;margin-top:2px;">🎯 ${skillLabels}</div>` : '');
-        })()}
+        ${p.related_category ? `<div style="font-size:10px;color:#555;">${catString}</div>` : ''}
         ${daysCount > 0 ? `<div style="font-size:10px;color:var(--gold);">📅 ${daysCount} day${daysCount !== 1 ? 's' : ''}</div>` : ''}
       </div>
     </div>
@@ -705,32 +590,705 @@ function buildProjectItem(p) {
 function addEntry() {
   const input = document.getElementById('activityInput');
   const text = input.value.trim();
-  const cat        = document.getElementById('entryCategory').value;
-  const project_id = document.getElementById('entryProject').value || null;
-  const skill_id   = document.getElementById('entrySkill').value || null;
+  const cat = document.getElementById('categorySelect').value;
   const today = todayKey();
-
+  
   if (!allLogs[today]) allLogs[today] = [];
-  allLogs[today].push({
-    text,
-    category: cat,
-    project_id,
-    skill_id,
-    timestamp: new Date().toISOString()
-  });
+  allLogs[today].push({ text, category: cat, timestamp: new Date().toISOString() });
   saveLocal('msilas-logs', allLogs);
   input.value = '';
-  document.getElementById('entryCategory').value = '';
-  document.getElementById('entryProject').value = '';
-  document.getElementById('entrySkill').value = '';
   renderAll();
   autoTrackProjects(cat, today);
-  syncToSupabase('activity_logs', {
-    user_id: USER_ID,
-    date: today,
-    entries: allLogs[today],
-    updated_at: new Date().toISOString()
-  }, 'user_id,date');
+  syncToSupabase('activity_logs', { user_id: USER_ID, date: today, entries: allLogs[today], updated_at: new Date().toISOString() }, 'user_id,date');
+  syncToAiProductivityTable();
 }
 
+function autoTrackProjects(category, date) {
+  let updatedProjects = [];
 
+  allProjects = allProjects.map(p => {
+    const pCats = Array.isArray(p.related_categories) && p.related_categories.length > 0
+      ? p.related_categories
+      : (p.related_category ? [p.related_category] : []);
+    if (p.status === 'active' && pCats.includes(category)) {
+      if (!p.logged_dates) p.logged_dates = [];
+      if (!p.logged_dates.includes(date)) {
+        const updatedProj = { ...p, logged_dates: [...p.logged_dates, date] };
+        updatedProjects.push(updatedProj);
+        return updatedProj;
+      }
+    }
+    return p;
+  });
+
+  if (updatedProjects.length > 0) {
+    saveLocal('msilas-projs', allProjects);
+    renderProjects();
+    
+    updatedProjects.forEach(p => {
+      syncToSupabase('projects', {
+        id: p.id,
+        user_id: USER_ID,
+        name: p.name,
+        description: p.description || '',
+        status: p.status,
+        related_category: p.related_category || '',
+        logged_dates: p.logged_dates,
+        created_at: p.created_at
+      }, 'id');
+    });
+    syncToAiProductivityTable();
+  }
+}
+
+async function deleteEntry(i) {
+  const today = todayKey();
+  if (allLogs[today]) {
+    allLogs[today].splice(i, 1);
+    saveLocal('msilas-logs', allLogs);
+    renderAll();
+    await syncToSupabase('activity_logs', { user_id: USER_ID, date: today, entries: allLogs[today], updated_at: new Date().toISOString() }, 'user_id,date');
+    await syncToAiProductivityTable();
+  }
+}
+
+function openEditEntry(i) {
+  const entries = allLogs[todayKey()] || [];
+  const entry = entries[i];
+  if (!entry) return;
+  editingEntryIndex = i;
+  document.getElementById('modalText').value = entry.text || '';
+  populateSelects();
+  document.getElementById('modalCategory').value = entry.category || 'other';
+  openModal('editModal');
+  setTimeout(() => document.getElementById('modalText').focus(), 100);
+}
+
+function saveEdit() {
+  if (editingEntryIndex < 0) return;
+  const today = todayKey();
+  if (!allLogs[today] || !allLogs[today][editingEntryIndex]) return;
+  allLogs[today][editingEntryIndex].text = document.getElementById('modalText').value.trim();
+  allLogs[today][editingEntryIndex].category = document.getElementById('modalCategory').value;
+  saveLocal('msilas-logs', allLogs);
+  syncToSupabase('activity_logs', { user_id: USER_ID, date: today, entries: allLogs[today], updated_at: new Date().toISOString() }, 'user_id,date');
+  closeModal('editModal');
+  editingEntryIndex = -1;
+  renderAll();
+  renderProjects();
+  syncToAiProductivityTable();
+}
+
+function openAddCatModal() {
+  selectedEmoji = '⭐';
+  document.getElementById('newCatName').value = '';
+  document.getElementById('newCatIcon').value = '';
+  document.getElementById('emojiPicker').innerHTML = EMOJI_OPTIONS.map(e =>
+    `<span class="emoji-opt${e === selectedEmoji ? ' selected' : ''}" onclick="selectEmoji('${e}',this)">${e}</span>`
+  ).join('');
+  openModal('addCatModal');
+  setTimeout(() => document.getElementById('newCatName').focus(), 100);
+}
+
+function selectEmoji(emoji, el) {
+  selectedEmoji = emoji;
+  document.querySelectorAll('.emoji-opt').forEach(e => e.classList.remove('selected'));
+  el.classList.add('selected');
+  document.getElementById('newCatIcon').value = '';
+}
+
+function saveNewCategory() {
+  const name = document.getElementById('newCatName').value.trim();
+  if (!name) { document.getElementById('newCatName').focus(); return; }
+  const icon = document.getElementById('newCatIcon').value.trim() || selectedEmoji;
+  const key = 'custom_' + Date.now();
+  
+  customCats[key] = { label: name, icon: icon };
+  saveLocal('msilas-cats', customCats);
+  syncToSupabase('custom_categories', { user_id: USER_ID, key, label: name, icon }, 'user_id,key');
+  closeModal('addCatModal');
+  populateSelects();
+  renderCatSection();
+  syncToAiProductivityTable();
+}
+
+function openProjectModal(id) {
+  editingProject = id ? id : null;
+  populateSelects();
+  document.getElementById('projModalTitle').textContent = id ? 'Edit Project' : 'New Project';
+  if (id) {
+    const p = allProjects.find(item => item.id === id);
+    if (p) {
+      document.getElementById('projName').value = p.name || '';
+      document.getElementById('projDesc').value = p.description || '';
+      document.getElementById('projStatus').value = p.status || 'active';
+      document.getElementById('projCategory').value = p.related_category || '';
+    }
+  } else {
+    document.getElementById('projName').value = '';
+    document.getElementById('projDesc').value = '';
+    document.getElementById('projStatus').value = 'active';
+    document.getElementById('projCategory').value = '';
+  }
+  openModal('projectModal');
+  setTimeout(() => document.getElementById('projName').focus(), 100);
+}
+
+async function saveProject() {
+  const name = document.getElementById('projName').value.trim();
+  if (!name) { document.getElementById('projName').focus(); return; }
+  const status = document.getElementById('projStatus').value;
+  const description = document.getElementById('projDesc').value.trim();
+  const related_category = document.getElementById('projCategory').value;
+  
+  let projToSync;
+
+  if (editingProject) {
+    allProjects = allProjects.map(p => p.id === editingProject ? { ...p, name, description, status, related_category } : p);
+    projToSync = allProjects.find(p => p.id === editingProject);
+  } else {
+    const newProj = { id: 'proj_' + Date.now(), name, description, status, related_category, logged_dates: [], created_at: new Date().toISOString() };
+    allProjects.push(newProj);
+    projToSync = newProj;
+  }
+  
+  saveLocal('msilas-projs', allProjects);
+  
+  if (projToSync) {
+    await syncToSupabase('projects', { 
+      id: projToSync.id,
+      user_id: USER_ID, 
+      name: projToSync.name,
+      description: projToSync.description || '',
+      status: projToSync.status,
+      related_category: projToSync.related_category || '',
+      logged_dates: projToSync.logged_dates || [],
+      created_at: projToSync.created_at
+    }, 'id');
+  }
+
+  closeModal('projectModal');
+  editingProject = null;
+  renderProjects();
+  await syncToAiProductivityTable();
+}
+
+async function handleDeleteProject(id) {
+  allProjects = allProjects.filter(p => p.id !== id);
+  saveLocal('msilas-projs', allProjects);
+  try { await sb.from('projects').delete().eq('id', id).eq('user_id', USER_ID); } catch(e) { console.error(e); }
+  renderProjects();
+  await syncToAiProductivityTable();
+}
+
+function openModal(id)  { document.getElementById(id).classList.add('open'); }
+function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+document.querySelectorAll('.modal-overlay').forEach(el => {
+  el.addEventListener('click', function(e) { if (e.target === this) this.classList.remove('open'); });
+});
+
+// ── Mind Map Visualization Layer ────────────────────────
+function buildMap() {
+  const svg = document.getElementById('skillMap');
+  svg.innerHTML = ''; 
+  
+  svg.removeEventListener('mousemove', handleMapMouseMove);
+  svg.removeEventListener('mouseup', handleMapMouseUp);
+  svg.removeEventListener('touchmove', handleMapMouseMove);
+  svg.removeEventListener('touchend', handleMapMouseUp);
+  
+  svg.addEventListener('mousemove', handleMapMouseMove);
+  svg.addEventListener('mouseup', handleMapMouseUp);
+  svg.addEventListener('touchmove', handleMapMouseMove, { passive: false });
+  svg.addEventListener('touchend', handleMapMouseUp);
+  
+  allSkills.forEach(s => {
+    const titleW = estimateTextWidth(s.label, 'title');
+    const subW = s.sub ? estimateTextWidth(s.sub, 'sub') : 0;
+    s.boxW = Math.max(titleW, subW) + 28; 
+    s.boxH = s.sub ? 42 : 32;
+    
+    if (s.x === undefined || s.x === null) s.x = 220 + (Math.random() - 0.5) * 60;
+    if (s.y === undefined || s.y === null) s.y = 220 + (Math.random() - 0.5) * 60;
+  });
+
+  allConnections.forEach(c => {
+    const f = allSkills.find(s => (s.id === c.from || s.key === c.from));
+    const t = allSkills.find(s => (s.id === c.to || s.key === c.to));
+    if (!f || !t) return;
+    
+    const line = document.createElementNS('http://www.w3.org/2000/svg','line');
+    line.setAttribute('x1', f.x); line.setAttribute('y1', f.y);
+    line.setAttribute('x2', t.x); line.setAttribute('y2', t.y);
+    line.dataset.from = c.from; line.dataset.to = c.to;
+    line.setAttribute('class', 'conn-line');
+    svg.appendChild(line);
+
+    const dot = document.createElementNS('http://www.w3.org/2000/svg','circle');
+    dot.setAttribute('cx', (f.x + t.x) / 2);
+    dot.setAttribute('cy', (f.y + t.y) / 2);
+    dot.setAttribute('r', 3);
+    dot.setAttribute('class', 'link-dot');
+    svg.appendChild(dot);
+  });
+  
+  allSkills.forEach(s => {
+    const sid = s.id || s.key;
+    const g = document.createElementNS('http://www.w3.org/2000/svg','g');
+    g.setAttribute('class', 'skill-node');
+    g.dataset.id = sid; g.style.cursor = 'grab'; g.style.transition = 'opacity 0.2s';
+    
+    const rect = document.createElementNS('http://www.w3.org/2000/svg','rect');
+    rect.setAttribute('x', s.x - s.boxW / 2);
+    rect.setAttribute('y', s.y - s.boxH / 2);
+    rect.setAttribute('width', s.boxW);
+    rect.setAttribute('height', s.boxH);
+    rect.setAttribute('class', 'node-rect');
+    
+    const t1 = document.createElementNS('http://www.w3.org/2000/svg','text');
+    t1.setAttribute('x', s.x);
+    t1.setAttribute('y', s.sub ? s.y - 2 : s.y + 4);
+    t1.setAttribute('class', 'node-title');
+    t1.textContent = s.label;
+    
+    g.appendChild(rect);
+    g.appendChild(t1);
+
+    if (s.sub) {
+      const t2 = document.createElementNS('http://www.w3.org/2000/svg','text');
+      t2.setAttribute('x', s.x);
+      t2.setAttribute('y', s.y + 11);
+      t2.setAttribute('class', 'node-sub');
+      t2.textContent = s.sub;
+      g.appendChild(t2);
+    }
+    
+    g.addEventListener('mousedown', (e) => handleNodeDragStart(e, s));
+    g.addEventListener('touchstart', (e) => handleNodeDragStart(e, s), { passive: false });
+    
+    g.addEventListener('click', (e) => {
+      if (hasDraggedSignificant) return;
+      toggleSkill(sid);
+    });
+    
+    g.addEventListener('dblclick', (e) => {
+      e.stopPropagation();
+      openEditSkillModal(sid, s.label, s.sub || '');
+    });
+    
+    svg.appendChild(g);
+  });
+}
+
+function handleNodeDragStart(e, node) {
+  draggedNode = node;
+  hasDraggedSignificant = false;
+  
+  const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+  const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+  
+  const svg = document.getElementById('skillMap');
+  const rect = svg.getBoundingClientRect();
+  
+  const currentMouseX = clientX - rect.left;
+  const currentMouseY = clientY - rect.top;
+  
+  dragOffsetX = currentMouseX - node.x;
+  dragOffsetY = currentMouseY - node.y;
+  
+  const el = svg.querySelector(`g[data-id="${node.id || node.key}"]`);
+  if (el) el.style.cursor = 'grabbing';
+}
+
+function handleMapMouseMove(e) {
+  if (!draggedNode) return;
+  
+  const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+  const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+  
+  const svg = document.getElementById('skillMap');
+  const rect = svg.getBoundingClientRect();
+  
+  let newX = clientX - rect.left - dragOffsetX;
+  let newY = clientY - rect.top - dragOffsetY;
+  
+  if (Math.abs(newX - draggedNode.x) > 2 || Math.abs(newY - draggedNode.y) > 2) {
+    hasDraggedSignificant = true;
+  }
+  
+  newX = Math.max(draggedNode.boxW / 2 + 10, Math.min(rect.width - draggedNode.boxW / 2 - 10, newX));
+  newY = Math.max(draggedNode.boxH / 2 + 10, Math.min(rect.height - draggedNode.boxH / 2 - 10, newY));
+  
+  draggedNode.x = newX;
+  draggedNode.y = newY;
+  
+  updateLivePositions();
+  
+  if(e.cancelable) e.preventDefault();
+}
+
+function handleMapMouseUp() {
+  if (!draggedNode) return;
+  const svg = document.getElementById('skillMap');
+  const el = svg.querySelector(`g[data-id="${draggedNode.id || draggedNode.key}"]`);
+  if (el) el.style.cursor = 'grab';
+  
+  saveLocal('msilas-skills', allSkills);
+  draggedNode = null;
+  syncToAiProductivityTable();
+  setTimeout(() => { hasDraggedSignificant = false; }, 50);
+}
+
+function updateLivePositions() {
+  const svg = document.getElementById('skillMap');
+  
+  allSkills.forEach(s => {
+    const nodeEl = svg.querySelector(`g[data-id="${s.id || s.key}"]`);
+    if (!nodeEl) return;
+    
+    const rect = nodeEl.querySelector('.node-rect');
+    rect.setAttribute('x', s.x - s.boxW / 2);
+    rect.setAttribute('y', s.y - s.boxH / 2);
+    
+    const texts = nodeEl.querySelectorAll('text');
+    if(texts[0]) {
+      texts[0].setAttribute('x', s.x);
+      texts[0].setAttribute('y', s.sub ? s.y - 2 : s.y + 4);
+    }
+    if(texts[1]) {
+      texts[1].setAttribute('x', s.x);
+      texts[1].setAttribute('y', s.y + 11);
+    }
+  });
+
+  const lines = svg.querySelectorAll('.conn-line');
+  lines.forEach(line => {
+    const f = allSkills.find(s => (s.id === line.dataset.from || s.key === line.dataset.from));
+    const t = allSkills.find(s => (s.id === line.dataset.to || s.key === line.dataset.to));
+    if (f && t) {
+      line.setAttribute('x1', f.x); line.setAttribute('y1', f.y);
+      line.setAttribute('x2', t.x); line.setAttribute('y2', t.y);
+    }
+  });
+
+  const dots = svg.querySelectorAll('.link-dot');
+  let idx = 0;
+  allConnections.forEach(c => {
+    const f = allSkills.find(s => (s.id === c.from || s.key === c.from));
+    const t = allSkills.find(s => (s.id === c.to || s.key === c.to));
+    if (f && t && dots[idx]) {
+      dots[idx].setAttribute('cx', (f.x + t.x) / 2);
+      dots[idx].setAttribute('cy', (f.y + t.y) / 2);
+      idx++;
+    }
+  });
+}
+
+function toggleSkill(id) {
+  activeSkill = activeSkill === id ? null : id;
+  document.querySelectorAll('.conn-line').forEach(line => {
+    const active = activeSkill && (line.dataset.from === activeSkill || line.dataset.to === activeSkill);
+    line.setAttribute('stroke', active ? '#E8C547' : '#222');
+    line.setAttribute('stroke-width', active ? '2.5' : '1.5');
+    line.style.opacity = (activeSkill && !active) ? '0.05' : '1';
+  });
+
+  document.querySelectorAll('.link-dot').forEach(dot => {
+    dot.style.opacity = activeSkill ? '0' : '1';
+  });
+
+  document.querySelectorAll('.skill-node').forEach(g => {
+    const sid = g.dataset.id;
+    const isActive = activeSkill === sid;
+    const connected = activeSkill && allConnections.some(c => (c.from === activeSkill && c.to === sid) || (c.to === activeSkill && c.from === sid));
+    const inactive = activeSkill && !isActive && !connected;
+    
+    const rect = g.querySelector('.node-rect');
+    rect.setAttribute('fill', isActive ? '#E8C547' : connected ? '#1e1a08' : '#141414');
+    rect.setAttribute('stroke', (isActive || connected) ? '#E8C547' : '#2a2a2a');
+    
+    g.querySelector('.node-title').setAttribute('fill', isActive ? '#0c0c0c' : '#d0cbc0');
+    g.style.opacity = inactive ? '0.15' : '1';
+  });
+  
+  const el = document.getElementById('connectionInfo');
+  if (!activeSkill) { el.innerHTML = '<div class="map-tagline">Every skill serves the same mission.</div>'; return; }
+  
+  const skill = allSkills.find(s => (s.id === activeSkill || s.key === activeSkill));
+  const conns = allConnections.filter(c => c.from === activeSkill || c.to === activeSkill);
+  
+  el.innerHTML = `<div class="conn-info">
+    <div class="conn-title">${skill.label} connects to:</div>
+    ${conns.map(c => {
+      const oid = c.from === activeSkill ? c.to : c.from;
+      const other = allSkills.find(s => (s.id === oid || s.key === oid));
+      return `<div class="conn-item"><div class="conn-dot"></div>
+        <div><span class="conn-other">${other ? other.label : oid}</span><span class="conn-lbl"> — ${c.label}</span></div></div>`;
+    }).join('')}
+    <button class="clear-btn" onclick="toggleSkill('${activeSkill}')">Clear Track</button>
+  </div>`;
+}
+
+function openEditSkillModal(id, label, sub) {
+  editingSkillId = id;
+  document.getElementById('editSkillName').value = label;
+  document.getElementById('editSkillSub').value = sub;
+  
+  const picker = document.getElementById('editSkillConnectionPicker');
+  picker.innerHTML = allSkills
+    .filter(s => (s.id || s.key) !== id)
+    .map(s => {
+      const sid = s.id || s.key;
+      const existingConn = allConnections.find(c => 
+        (c.from === id && c.to === sid) || (c.to === id && c.from === sid)
+      );
+      const isChecked = existingConn ? 'checked' : '';
+      const showDesc = existingConn ? 'show' : '';
+      const descVal = existingConn ? existingConn.label : '';
+
+      return `<div class="skill-conn-item">
+        <input type="checkbox" class="skill-conn-check" id="edit_conn_${sid}" value="${sid}" ${isChecked} onchange="toggleConnDesc(this)">
+        <div style="flex:1;">
+          <label class="skill-conn-label" for="edit_conn_${sid}">${s.label}</label>
+          <input type="text" class="skill-conn-desc ${showDesc}" id="desc_${sid}" value="${descVal}" placeholder="How do they connect?">
+        </div>
+      </div>`;
+    }).join('');
+
+  openModal('editSkillModal');
+  setTimeout(() => document.getElementById('editSkillName').focus(), 100);
+}
+
+async function updateSkill() {
+  const label = document.getElementById('editSkillName').value.trim();
+  const sub = document.getElementById('editSkillSub').value.trim();
+  if (!label || !editingSkillId) return;
+  
+  allSkills = allSkills.map(s => (s.id === editingSkillId || s.key === editingSkillId) ? { ...s, label, sub } : s);
+  saveLocal('msilas-skills', allSkills);
+  await syncToSupabase('skills', { user_id: USER_ID, key: editingSkillId, label, sub }, 'user_id,key');
+
+  allConnections = allConnections.filter(c => c.from !== editingSkillId && c.to !== editingSkillId);
+  try { await sb.from('skill_connections').delete().or(`from_skill.eq.${editingSkillId},to_skill.eq.${editingSkillId}`).eq('user_id', USER_ID); } catch(e){}
+
+  const promises = [];
+  document.querySelectorAll('#editSkillConnectionPicker .skill-conn-check:checked').forEach(cb => {
+    const toId = cb.value;
+    const container = cb.closest('.skill-conn-item');
+    const lbl = container.querySelector('.skill-conn-desc').value.trim() || `${label} meets ${toId}`;
+    allConnections.push({ from: editingSkillId, to: toId, label: lbl });
+    promises.push(syncToSupabase('skill_connections', { user_id: USER_ID, from_skill: editingSkillId, to_skill: toId, label: lbl }, 'user_id,from_skill,to_skill'));
+  });
+  saveLocal('msilas-connections', allConnections);
+  await Promise.all(promises);
+
+  closeModal('editSkillModal');
+  editingSkillId = null;
+  buildMap();
+  toggleSkill(null);
+  await syncToAiProductivityTable();
+}
+
+async function deleteCurrentSkill() {
+  if (!editingSkillId) return;
+  if (!confirm("Are you sure you want to completely delete this skill and all its connection links?")) return;
+
+  allSkills = allSkills.filter(s => (s.id !== editingSkillId && s.key !== editingSkillId));
+  saveLocal('msilas-skills', allSkills);
+  try { await sb.from('skills').delete().eq('key', editingSkillId).eq('user_id', USER_ID); } catch(e){}
+
+  allConnections = allConnections.filter(c => c.from !== editingSkillId && c.to !== editingSkillId);
+  saveLocal('msilas-connections', allConnections);
+  try { await sb.from('skill_connections').delete().or(`from_skill.eq.${editingSkillId},to_skill.eq.${editingSkillId}`).eq('user_id', USER_ID); } catch(e){}
+
+  closeModal('editSkillModal');
+  editingSkillId = null;
+  buildMap();
+  toggleSkill(null);
+  await syncToAiProductivityTable();
+}
+
+function openAddSkillModal() {
+  document.getElementById('skillName').value = '';
+  document.getElementById('skillSub').value = '';
+  const picker = document.getElementById('skillConnectionPicker');
+  picker.innerHTML = allSkills.map(s => {
+    const sid = s.id || s.key;
+    return `<div class="skill-conn-item">
+      <input type="checkbox" class="skill-conn-check" id="add_conn_${sid}" value="${sid}" onchange="toggleConnDesc(this)">
+      <div style="flex:1;"><label class="skill-conn-label" for="add_conn_${sid}">${s.label}</label>
+      <input type="text" class="skill-conn-desc" id="desc_${sid}" placeholder="How do they connect?"></div></div>`;
+  }).join('');
+  openModal('addSkillModal');
+  setTimeout(() => document.getElementById('skillName').focus(), 100);
+}
+
+function toggleConnDesc(cb) {
+  const container = cb.closest('.skill-conn-item');
+  const d = container.querySelector('.skill-conn-desc');
+  if (d) d.classList.toggle('show', cb.checked);
+}
+
+async function saveSkill() {
+  const label = document.getElementById('skillName').value.trim();
+  const sub = document.getElementById('skillSub').value.trim();
+  if (!label) { document.getElementById('skillName').focus(); return; }
+  
+  const key = 'skill_' + Date.now();
+  const newSkill = { id: key, key, label, sub, x: 220, y: 220 };
+  allSkills.push(newSkill);
+  saveLocal('msilas-skills', allSkills);
+  await syncToSupabase('skills', { user_id: USER_ID, key, label, sub }, 'user_id,key');
+
+  const promises = [];
+  document.querySelectorAll('#skillConnectionPicker .skill-conn-check:checked').forEach(cb => {
+    const toId = cb.value;
+    const container = cb.closest('.skill-conn-item');
+    const lbl = container.querySelector('.skill-conn-desc').value.trim() || `${label} meets ${toId}`;
+    allConnections.push({ from: key, to: toId, label: lbl });
+    promises.push(syncToSupabase('skill_connections', { user_id: USER_ID, from_skill: key, to_skill: toId, label: lbl }, 'user_id,from_skill,to_skill'));
+  });
+  saveLocal('msilas-connections', allConnections);
+  await Promise.all(promises);
+
+  closeModal('addSkillModal');
+  buildMap();
+  toggleSkill(null);
+  await syncToAiProductivityTable();
+}
+
+// ── Dashboard Lifecycle Initialization ──────────────────────────────
+
+// ── Category management ───────────────────────────────────
+let editingCatKey  = null;
+let editingCatEmoji = '⭐';
+
+function renderCatSection() {
+  const el = document.getElementById('catSectionList');
+  if (!el) return;
+  el.innerHTML = '';
+  const habits = allHabits();
+  if (Object.keys(habits).length === 0) {
+    const li = document.createElement('li');
+    li.style.cssText = 'color:#333;font-size:12px;font-style:italic;padding:8px 0;';
+    li.textContent = 'No categories yet.';
+    el.appendChild(li);
+    return;
+  }
+  Object.entries(habits).forEach(([key, val]) => {
+    const li = document.createElement('li');
+    li.className = 'cat-section-item';
+    li.innerHTML = '<span class="cat-section-icon">' + val.icon + '</span>' +
+      '<span class="cat-section-label">' + val.label + '</span>';
+    const editBtn = document.createElement('button');
+    editBtn.className = 'icon-btn';
+    editBtn.textContent = '✎';
+    editBtn.title = 'Edit';
+    editBtn.addEventListener('click', () => openEditCategory(key));
+    const delBtn = document.createElement('button');
+    delBtn.className = 'icon-btn del';
+    delBtn.textContent = '×';
+    delBtn.title = 'Delete';
+    delBtn.addEventListener('click', () => deleteCategory(key));
+    li.appendChild(editBtn);
+    li.appendChild(delBtn);
+    el.appendChild(li);
+  });
+}
+
+function openEditCategory(key) {
+  const cat = allHabits()[key];
+  if (!cat) return;
+  editingCatKey   = key;
+  editingCatEmoji = cat.icon;
+  document.getElementById('editCatName').value = cat.label;
+  document.getElementById('editCatIcon').value = '';
+  const picker = document.getElementById('editEmojiPicker');
+  picker.innerHTML = '';
+  EMOJI_OPTIONS.forEach(e => {
+    const span = document.createElement('span');
+    span.className = 'emoji-opt' + (e === editingCatEmoji ? ' selected' : '');
+    span.textContent = e;
+    span.addEventListener('click', function() {
+      editingCatEmoji = e;
+      document.querySelectorAll('#editEmojiPicker .emoji-opt').forEach(s => s.classList.remove('selected'));
+      this.classList.add('selected');
+      document.getElementById('editCatIcon').value = '';
+    });
+    picker.appendChild(span);
+  });
+  openModal('editCatModal');
+  setTimeout(() => document.getElementById('editCatName').focus(), 100);
+}
+
+function saveEditCategory() {
+  if (!editingCatKey) return;
+  const label = document.getElementById('editCatName').value.trim();
+  if (!label) { document.getElementById('editCatName').focus(); return; }
+  const icon = document.getElementById('editCatIcon').value.trim() || editingCatEmoji;
+  customCats[editingCatKey] = { label, icon };
+  saveLocal('msilas-cats', customCats);
+  syncToSupabase('custom_categories', { user_id: USER_ID, key: editingCatKey, label, icon }, 'user_id,key');
+  closeModal('editCatModal');
+  editingCatKey = null;
+  populateSelects();
+  renderCatSection();
+}
+
+async function deleteCategory(key) {
+  if (!customCats[key]) return;
+  delete customCats[key];
+  saveLocal('msilas-cats', customCats);
+  try {
+    await sb.from('custom_categories').delete().eq('key', key).eq('user_id', USER_ID);
+  } catch(e) { console.error('Cat delete failed:', e); }
+  populateSelects();
+  renderCatSection();
+}
+
+async function init() {
+  document.getElementById('syncDot').className = 'sync-dot yellow';
+  document.getElementById('syncText').textContent = 'Loading...';
+
+  try {
+    const { data: logData } = await sb.from('activity_logs').select('date,entries').eq('user_id', USER_ID);
+    if (logData && logData.length > 0) {
+      logData.forEach(r => { allLogs[r.date] = r.entries; });
+      saveLocal('msilas-logs', allLogs);
+    }
+
+    const { data: catData } = await sb.from('custom_categories').select('key,label,icon').eq('user_id', USER_ID);
+    if (catData && catData.length > 0) {
+      catData.forEach(r => { customCats[r.key] = { label: r.label, icon: r.icon }; });
+      saveLocal('msilas-cats', customCats);
+    }
+
+    const { data: projData } = await sb.from('projects').select('*').eq('user_id', USER_ID).order('created_at');
+    if (projData && projData.length > 0) {
+      allProjects = projData.map(p => ({ 
+        ...p, 
+        description: p.description || '', 
+        related_category: p.related_category || '',
+        logged_dates: p.logged_dates || []
+      }));
+      saveLocal('msilas-projs', allProjects);
+    }
+
+    setSynced();
+  } catch(e) {
+    console.error("Initialization pipeline failure:", e);
+    setOffline();
+  }
+
+  buildMap();
+  toggleSkill(null);
+  populateSelects();
+  renderAll();
+  renderProjects();
+  renderCatSection();
+}
+
+init();
+</script>
+</body>
+</html>
