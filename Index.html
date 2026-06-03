@@ -7,1288 +7,1019 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.6/dist/umd/supabase.min.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&family=Lora:ital,wght@0,400;0,500;1,400&display=swap" rel="stylesheet">
 <style>
-  :root { --gold:#E8C547; --bg:#0c0c0c; --bg2:#131313; --border:#222; --text:#e8e0d0; --muted:#666; --green:#4a9a4a; }
+  :root { 
+    --gold: #E8C547; 
+    --bg: #0c0c0c; 
+    --bg2: #131313; 
+    --border: #222; 
+    --text: #e8e0d0; 
+    --muted: #666; 
+    --green: #4a9a4a; 
+    --red: #af4c4c;
+  }
   * { margin:0; padding:0; box-sizing:border-box; }
-  body { background:var(--bg); color:var(--text); font-family:'Lora',serif; min-height:100vh; padding-bottom:60px; }
-
-  .page-wrap { max-width:1200px; margin:0 auto; padding:0 20px; }
-
-  /* HEADER */
-  .header { padding:24px 0 16px; border-bottom:1px solid var(--border); display:flex; align-items:center; justify-content:space-between; margin-bottom:4px; }
-  .header-title { font-family:'Playfair Display',serif; font-size:20px; color:var(--gold); font-weight:700; }
-  .header-date { font-size:10px; color:#444; letter-spacing:1px; text-transform:uppercase; }
-
-  /* DESKTOP GRID */
-  .desktop-grid { display:grid; grid-template-columns:1fr; gap:0; }
-  @media(min-width:768px) {
-    .desktop-grid { grid-template-columns:1fr 1fr; gap:40px; align-items:start; padding-top:8px; }
-    .desktop-left { position:sticky; top:20px; max-height:calc(100vh - 40px); overflow-y:auto; scrollbar-width:none; }
-    .desktop-left::-webkit-scrollbar { display:none; }
+  body { 
+    background: var(--bg); 
+    color: var(--text); 
+    font-family: 'Lora', serif; 
+    min-height: 100vh; 
+    padding-bottom: 60px; 
   }
 
-  /* SECTION LABEL */
-  .section { padding:20px 0 0; }
-  .section-label { font-size:10px; color:#444; letter-spacing:2px; text-transform:uppercase; margin-bottom:14px; display:flex; align-items:center; gap:10px; }
-  .section-label::after { content:''; flex:1; height:1px; background:var(--border); }
+  .page-wrap { max-width: 1200px; margin: 0 auto; padding: 0 20px; }
 
-  /* STATS */
-  .top-stats { display:grid; grid-template-columns:1fr 1fr 1fr; gap:10px; padding:16px 0; }
-  .stat-box { background:var(--bg2); border-radius:10px; padding:14px; text-align:center; border:1px solid var(--border); }
-  .stat-number { font-family:'Playfair Display',serif; font-size:28px; color:var(--gold); font-weight:700; line-height:1; }
-  .stat-label { font-size:9px; color:#444; margin-top:4px; text-transform:uppercase; letter-spacing:1px; }
-
-  /* ADD ENTRY */
-  .add-form { display:flex; gap:8px; margin-bottom:10px; }
-  .add-input { flex:1; background:var(--bg2); border:1px solid var(--border); border-radius:8px; padding:11px 14px; color:var(--text); font-size:13px; font-family:'Lora',serif; outline:none; transition:border-color 0.2s; }
-  .add-input:focus { border-color:var(--gold); }
-  .add-input::placeholder { color:#333; }
-  .add-btn { background:var(--gold); border:none; border-radius:8px; padding:11px 18px; color:#0c0c0c; font-size:20px; cursor:pointer; font-weight:bold; flex-shrink:0; line-height:1; }
-  .add-btn:hover { background:#f0d060; }
-  .cat-row { display:flex; gap:8px; margin-bottom:14px; }
-  .cat-select { flex:1; background:var(--bg2); border:1px solid var(--border); border-radius:8px; padding:10px 14px; color:var(--text); font-size:13px; font-family:'Lora',serif; outline:none; cursor:pointer; appearance:none; background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%23666' stroke-width='1.5' fill='none'/%3E%3C/svg%3E"); background-repeat:no-repeat; background-position:right 12px center; }
-  .cat-select:focus { border-color:var(--gold); }
-  .cat-select option { background:#1a1a1a; }
-  .add-cat-btn { background:none; border:1px solid var(--border); border-radius:8px; padding:10px 12px; color:var(--muted); font-size:11px; cursor:pointer; white-space:nowrap; font-family:'Lora',serif; flex-shrink:0; transition:color 0.2s,border-color 0.2s; }
-  .add-cat-btn:hover { color:var(--gold); border-color:var(--gold); }
-
-  /* TODO LIST */
-  .todo-list { list-style:none; }
-  .todo-item { display:flex; align-items:flex-start; gap:10px; padding:13px 14px; background:var(--bg2); border:1px solid var(--border); border-radius:8px; margin-bottom:8px; animation:slideIn 0.2s ease; }
-  @keyframes slideIn { from{opacity:0;transform:translateY(-5px)} to{opacity:1;transform:translateY(0)} }
-  .todo-icon { font-size:17px; flex-shrink:0; margin-top:1px; }
-  .todo-content { flex:1; min-width:0; }
-  .todo-cat { font-size:10px; color:var(--gold); letter-spacing:1px; text-transform:uppercase; margin-bottom:2px; }
-  .todo-text { font-size:13px; color:var(--text); line-height:1.4; word-break:break-word; }
-  .todo-time { font-size:10px; color:#333; margin-top:3px; }
-  .todo-btns { display:flex; flex-direction:column; gap:6px; flex-shrink:0; }
-  .icon-btn { background:none; border:none; color:#333; font-size:14px; cursor:pointer; padding:2px 4px; line-height:1; transition:color 0.2s; }
-  .icon-btn:hover { color:var(--gold); }
-  .icon-btn.del:hover { color:#a04040; }
-  .empty-state { text-align:center; color:#2a2a2a; font-size:13px; font-style:italic; padding:20px 0; }
-
-  /* 30 DAYS */
-  .days-grid { display:grid; grid-template-columns:repeat(7,1fr); gap:5px; margin-bottom:8px; }
-  .day-cell { aspect-ratio:1; border-radius:4px; background:var(--bg2); border:1px solid var(--border); display:flex; align-items:center; justify-content:center; position:relative; }
-  .day-cell.has-entries { background:var(--gold); border-color:var(--gold); }
-  .day-cell.is-today:not(.has-entries) { border-color:var(--gold); }
-  .today-dot { width:4px; height:4px; border-radius:50%; background:var(--gold); }
-  .day-count { font-size:9px; color:#0c0c0c; font-weight:bold; font-family:'Playfair Display',serif; }
-  .day-tip { display:none; position:absolute; bottom:calc(100% + 5px); left:50%; transform:translateX(-50%); background:#1a1a1a; border:1px solid var(--border); border-radius:4px; padding:4px 7px; font-size:10px; color:var(--text); white-space:nowrap; z-index:20; pointer-events:none; }
-  .day-cell:hover .day-tip { display:block; }
-
-  /* PROJECTS */
-  .projects-list { list-style:none; }
-  .project-item { display:flex; align-items:flex-start; gap:10px; padding:13px 14px; background:var(--bg2); border:1px solid var(--border); border-radius:8px; margin-bottom:8px; }
-  .proj-dot { width:8px; height:8px; border-radius:50%; flex-shrink:0; margin-top:5px; }
-  .proj-content { flex:1; min-width:0; }
-  .proj-name { font-size:14px; color:var(--text); font-family:'Playfair Display',serif; }
-  .proj-desc { font-size:11px; color:var(--muted); margin-top:3px; line-height:1.4; }
-  .proj-status { font-size:10px; letter-spacing:1px; text-transform:uppercase; margin-top:5px; }
-  .status-active { color:var(--green); }
-  .status-paused { color:#886633; }
-  .status-completed { color:#4a7a9a; }
-  .proj-btns { display:flex; flex-direction:column; gap:4px; flex-shrink:0; }
-  .add-proj-btn { width:100%; background:none; border:1px dashed #2a2a2a; border-radius:8px; padding:12px; color:#444; font-size:12px; cursor:pointer; font-family:'Lora',serif; letter-spacing:0.5px; transition:color 0.2s,border-color 0.2s; margin-top:4px; }
-  .add-proj-btn:hover { color:var(--gold); border-color:var(--gold); }
-
-  /* SKILLS MAP */
-  #skillMap { width:100%; height:460px; background:#080808; border:1px solid var(--border); border-radius:12px; display:block; overflow:hidden; user-select:none; }
-  .map-hint { font-size:11px; color:#444; text-align:center; margin-bottom:10px; font-style:italic; }
-  .conn-info { margin-top:12px; background:var(--bg2); border:1px solid var(--border); border-left:3px solid var(--gold); border-radius:8px; padding:14px; }
-  .conn-title { font-family:'Playfair Display',serif; font-size:14px; color:var(--gold); margin-bottom:10px; }
-  .conn-item { display:flex; gap:10px; margin-bottom:8px; align-items:flex-start; }
-  .conn-dot { width:5px; height:5px; border-radius:50%; background:var(--gold); margin-top:6px; flex-shrink:0; }
-  .conn-other { color:var(--text); font-size:12px; }
-  .conn-lbl { color:#444; font-size:11px; }
-  .clear-btn { margin-top:10px; background:none; border:1px solid var(--border); border-radius:4px; color:var(--muted); font-size:11px; padding:5px 12px; cursor:pointer; font-family:'Lora',serif; transition:color 0.2s,border-color 0.2s; }
-  .clear-btn:hover { color:var(--gold); border-color:var(--gold); }
-  .map-tagline { text-align:center; color:#222; font-size:11px; font-style:italic; margin-top:8px; }
-
-  /* MODALS */
-  .modal-overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.88); z-index:100; align-items:center; justify-content:center; padding:20px; }
-  .modal-overlay.open { display:flex; }
-  .modal { background:#161616; border:1px solid #2a2a2a; border-top:3px solid var(--gold); border-radius:12px; padding:22px; width:100%; max-width:400px; animation:modalIn 0.2s ease; }
-  @keyframes modalIn { from{opacity:0;transform:translateY(10px)} to{opacity:1;transform:translateY(0)} }
-  .modal-title { font-family:'Playfair Display',serif; font-size:17px; color:var(--gold); margin-bottom:18px; }
-  .modal-label { font-size:11px; color:#555; text-transform:uppercase; letter-spacing:1px; margin-bottom:6px; display:block; }
-  .modal-input { width:100%; background:var(--bg2); border:1px solid var(--border); border-radius:8px; padding:11px 14px; color:var(--text); font-size:14px; font-family:'Lora',serif; outline:none; margin-bottom:14px; transition:border-color 0.2s; }
-  .modal-input:focus { border-color:var(--gold); }
-  .modal-select { width:100%; background:var(--bg2); border:1px solid var(--border); border-radius:8px; padding:11px 14px; color:var(--text); font-size:14px; font-family:'Lora',serif; outline:none; margin-bottom:18px; cursor:pointer; appearance:none; background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%23666' stroke-width='1.5' fill='none'/%3E%3C/svg%3E"); background-repeat:no-repeat; background-position:right 14px center; }
-  .modal-select option { background:#1a1a1a; }
-  .modal-btns { display:flex; gap:10px; }
-  .modal-save { flex:1; background:var(--gold); border:none; border-radius:8px; padding:12px; color:#0c0c0c; font-size:14px; font-family:'Playfair Display',serif; font-weight:700; cursor:pointer; }
-  .modal-save:hover { background:#f0d060; }
-  .modal-cancel { flex:1; background:none; border:1px solid var(--border); border-radius:8px; padding:12px; color:#555; font-size:14px; font-family:'Lora',serif; cursor:pointer; transition:color 0.2s,border-color 0.2s; }
-  .modal-cancel:hover { color:var(--text); border-color:#555; }
-  .modal-delete { background:#4a1515; border:1px solid #6a2525; color:#ffaaaa; border-radius:8px; padding:12px 16px; font-size:13px; cursor:pointer; font-family:'Lora',serif; margin-bottom:18px; width:100%; transition:background 0.2s; text-align:center; }
-  .modal-delete:hover { background:#6a2525; }
-  .emoji-picker { display:flex; flex-wrap:wrap; gap:7px; background:var(--bg2); border:1px solid var(--border); border-radius:8px; padding:10px; margin-bottom:4px; }
-  .emoji-opt { font-size:20px; cursor:pointer; padding:4px; border-radius:6px; transition:background 0.15s; }
-  .emoji-opt:hover,.emoji-opt.selected { background:#2a2a2a; }
-
-  .sync-badge { position:fixed; bottom:16px; right:16px; background:var(--bg2); border:1px solid var(--border); border-radius:20px; padding:6px 12px; font-size:10px; color:#444; letter-spacing:1px; text-transform:uppercase; z-index:50; display:flex; align-items:center; gap:6px; }
-  .sync-dot { width:6px; height:6px; border-radius:50%; background:#444; transition:background 0.3s; }
-  .sync-dot.green { background:var(--green); }
-  .sync-dot.yellow { background:#886633; animation:pulse 1.2s infinite; }
-  .sync-dot.red { background:#7a3030; }
-  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.3} }
-
-  .skill-conn-item { display:flex; align-items:flex-start; gap:10px; padding:8px 0; border-bottom:1px solid var(--border); }
-  .skill-conn-item:last-child { border-bottom:none; }
-  .skill-conn-check { width:16px; height:16px; accent-color:var(--gold); flex-shrink:0; margin-top:2px; cursor:pointer; }
-  .skill-conn-label { font-size:13px; color:var(--text); flex:1; }
-  .skill-conn-desc { width:100%; background:var(--bg); border:1px solid var(--border); border-radius:4px; padding:5px 8px; color:var(--text); font-size:11px; font-family:'Lora',serif; outline:none; margin-top:4px; display:none; }
-  .skill-conn-desc.show { display:block; }
-  .skill-conn-desc:focus { border-color:var(--gold); }
+  /* HEADER */
+  .header { 
+    padding: 24px 0 16px; 
+    border-bottom: 1px solid var(--border); 
+    display: flex; 
+    align-items: center; 
+    justify-content: space-between; 
+  }
+  .header h1 { font-family: 'Playfair Display', serif; font-size: 24px; font-weight: 700; color: var(--gold); }
   
-  /* SVG MIND MAP BADGE STYLING */
-  .node-rect { fill:#141414; stroke:#2a2a2a; stroke-width:1.5; rx:8; ry:8; transition: fill 0.2s, stroke 0.2s; }
-  .skill-node:hover .node-rect { stroke:#555; }
-  .node-title { fill:#d0cbc0; font-size:13px; font-family:'Playfair Display',serif; font-weight:700; text-anchor:middle; pointer-events:none; }
-  .node-sub { fill:#666; font-size:9.5px; font-family:'Lora',serif; text-anchor:middle; pointer-events:none; }
-  .conn-line { stroke:#222; stroke-width:1.5; transition: stroke 0.2s, stroke-width 0.2s; }
-  .link-dot { fill:#333; transition: fill 0.2s; }
+  .sync-status { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--muted); }
+  .sync-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--muted); transition: background 0.3s; }
+  .sync-dot.green { background: var(--green); }
+  .sync-dot.yellow { background: var(--gold); }
+  .sync-dot.red { background: var(--red); }
+
+  /* NAVIGATION TABS */
+  .nav-tabs { display: flex; gap: 24px; margin: 24px 0; border-bottom: 1px solid var(--border); padding-bottom: 8px; }
+  .nav-tab { background: none; border: none; color: var(--muted); font-family: 'Lora', serif; font-size: 16px; cursor: pointer; padding: 4px 0; position: relative; transition: color 0.2s; }
+  .nav-tab.active { color: var(--gold); }
+  .nav-tab.active::after { content: ''; position: absolute; bottom: -9px; left: 0; width: 100%; height: 2px; background: var(--gold); }
+
+  /* SECTIONS */
+  .tab-content { display: none; }
+  .tab-content.active { display: block; }
+
+  /* TODAY SECTION LOGS */
+  .today-box { background: var(--bg2); border: 1px solid var(--border); padding: 20px; border-radius: 4px; margin-bottom: 24px; }
+  .today-box h2 { font-family: 'Playfair Display', serif; font-size: 20px; margin-bottom: 16px; color: var(--gold); }
   
-  #textMeasureHelper { position:absolute; visibility:hidden; height:auto; width:auto; white-space:nowrap; }
+  .input-group { display: flex; flex-direction: column; gap: 12px; margin-bottom: 16px; }
+  .entry-textarea { 
+    width: 100%; 
+    background: #080808; 
+    border: 1px solid var(--border); 
+    color: var(--text); 
+    padding: 12px; 
+    font-family: 'Lora', serif; 
+    font-size: 14px; 
+    border-radius: 4px; 
+    resize: vertical; 
+    min-height: 80px;
+  }
+  .entry-textarea:focus { border-color: var(--gold); outline: none; }
 
-  /* Entry form */
-  .entry-form { margin-bottom:14px; }
-  .entry-selects { display:grid; grid-template-columns:1fr 1fr 1fr; gap:8px; margin:8px 0 10px; }
-  .entry-select { background:var(--bg2); border:1px solid var(--border); border-radius:8px; padding:9px 10px; color:var(--text); font-size:11px; font-family:'Lora',serif; outline:none; cursor:pointer; appearance:none; width:100%; }
-  .entry-select:focus { border-color:var(--gold); }
-  .entry-select option { background:#1a1a1a; }
-  /* Entry badges on todo items */
-  .entry-badges { display:flex; flex-wrap:wrap; gap:4px; margin-top:3px; }
-  .entry-badge { font-size:10px; color:#666; background:#1a1a1a; border:1px solid #222; border-radius:10px; padding:2px 7px; }
-  /* Category manage list in dashboard */
-  .cat-section-list { list-style:none; margin-bottom:8px; }
-  .cat-section-item { display:flex; align-items:center; gap:10px; padding:11px 12px; background:var(--bg2); border:1px solid var(--border); border-radius:8px; margin-bottom:6px; }
-  .cat-section-icon { font-size:18px; flex-shrink:0; }
-  .cat-section-label { flex:1; font-size:13px; color:var(--text); }
+  /* Metadata Selection Button Row */
+  .meta-buttons-row { display: flex; flex-wrap: wrap; gap: 12px; margin-bottom: 16px; align-items: center; }
+  .meta-btn { 
+    background: #1a1a1a; 
+    border: 1px solid var(--border); 
+    color: var(--text); 
+    padding: 8px 14px; 
+    font-size: 13px; 
+    font-family: 'Lora', serif; 
+    border-radius: 4px; 
+    cursor: pointer; 
+    display: flex; 
+    align-items: center; 
+    gap: 6px;
+    transition: all 0.2s;
+  }
+  .meta-btn:hover { border-color: var(--gold); background: #222; }
+  .meta-btn.selected { border-color: var(--gold); color: var(--gold); background: #1e1b10; }
+  
+  .btn-submit { 
+    background: var(--gold); 
+    color: #000; 
+    border: none; 
+    padding: 10px 20px; 
+    font-family: 'Lora', serif; 
+    font-weight: 500; 
+    font-size: 14px; 
+    border-radius: 4px; 
+    cursor: pointer; 
+    align-self: flex-end;
+    transition: opacity 0.2s;
+  }
+  .btn-submit:hover { opacity: 0.9; }
 
+  /* LOG ENTRIES DISPLAY */
+  .logs-list { display: flex; flex-direction: column; gap: 12px; }
+  .log-item { background: #161616; border: 1px solid var(--border); padding: 14px; border-radius: 4px; position: relative; }
+  .log-item-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 6px; }
+  .log-text { font-size: 14px; line-height: 1.5; color: #d8d0c0; white-space: pre-wrap; }
+  .log-time { font-size: 11px; color: var(--muted); }
+  .log-tags { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+  .tag { font-size: 11px; padding: 2px 8px; border-radius: 2px; background: #222; border: 1px solid #333; color: #aaa; }
+  .tag.tag-project { border-color: #3b5998; color: #8b9dc3; background: #111622; }
+  .tag.tag-skill { border-color: #4a9a4a; color: #8cd08c; background: #121f12; }
+  .tag.tag-cat { border-color: var(--gold); color: var(--gold); background: #1e1b10; }
+  
+  .btn-delete-log { background: none; border: none; color: var(--muted); cursor: pointer; font-size: 12px; }
+  .btn-delete-log:hover { color: var(--red); }
+
+  /* PROJECTS & MANAGEMENTS GRID */
+  .grid-layout { display: grid; grid-template-columns: 1fr; gap: 24px; }
+  @media(min-width: 768px) { .grid-layout { grid-template-columns: 2fr 1fr; } }
+
+  .card { background: var(--bg2); border: 1px solid var(--border); padding: 20px; border-radius: 4px; margin-bottom: 24px; }
+  .card h2 { font-family: 'Playfair Display', serif; font-size: 20px; margin-bottom: 16px; color: var(--gold); border-bottom: 1px solid var(--border); padding-bottom: 8px; }
+
+  /* FORM STYLES */
+  .form-row { display: flex; flex-direction: column; gap: 6px; margin-bottom: 14px; }
+  .form-row label { font-size: 13px; color: #aaa; }
+  .form-input, .form-select { background: #080808; border: 1px solid var(--border); color: var(--text); padding: 8px 12px; font-family: 'Lora', serif; font-size: 14px; border-radius: 4px; width: 100%; }
+  .form-input:focus, .form-select:focus { border-color: var(--gold); outline: none; }
+  .btn-action { background: none; border: 1px solid var(--gold); color: var(--gold); padding: 8px 16px; border-radius: 4px; cursor: pointer; font-family: 'Lora', serif; font-size: 13px; transition: all 0.2s; }
+  .btn-action:hover { background: var(--gold); color: #000; }
+
+  /* PROJECT LISTS */
+  .project-item { border: 1px solid var(--border); background: #161616; padding: 14px; border-radius: 4px; margin-bottom: 12px; display: flex; flex-direction: column; gap: 8px; }
+  .project-top { display: flex; justify-content: space-between; align-items: flex-start; }
+  .project-title { font-size: 16px; font-weight: 600; color: #fff; }
+  .project-desc { font-size: 13px; color: #aaa; line-height: 1.4; }
+  .project-meta { font-size: 11px; color: var(--muted); display: flex; gap: 12px; flex-wrap: wrap; margin-top: 4px; }
+  .project-count-badge { background: #262626; color: var(--gold); padding: 2px 6px; border-radius: 3px; border: 1px solid #3d3d3d; font-size: 11px; font-weight: bold; }
+  .project-actions { display: flex; gap: 12px; align-items: center; border-top: 1px solid #222; padding-top: 8px; margin-top: 4px; justify-content: space-between; }
+  
+  /* SKILLS & CATEGORIES LISTS */
+  .item-list { display: flex; flex-direction: column; gap: 8px; }
+  .list-row { display: flex; justify-content: space-between; align-items: center; background: #161616; border: 1px solid var(--border); padding: 10px 14px; border-radius: 4px; }
+  .list-row-info { display: flex; align-items: center; gap: 8px; font-size: 14px; }
+  
+  /* MODAL STYLES */
+  .modal-overlay { 
+    position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
+    background: rgba(0,0,0,0.85); display: none; align-items: center; 
+    justify-content: center; z-index: 1000; padding: 20px; 
+  }
+  .modal-overlay.active { display: flex; }
+  .modal-container { 
+    background: var(--bg2); border: 1px solid var(--border); 
+    max-width: 450px; width: 100%; border-radius: 6px; 
+    padding: 20px; display: flex; flex-direction: column; gap: 16px; 
+  }
+  .modal-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border); padding-bottom: 8px; }
+  .modal-header h3 { font-family: 'Playfair Display', serif; font-size: 18px; color: var(--gold); }
+  .modal-close { background: none; border: none; color: var(--muted); font-size: 20px; cursor: pointer; }
+  .modal-close:hover { color: var(--text); }
+  .modal-options-list { max-height: 250px; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; padding-right: 4px; }
+  .modal-option-item { 
+    background: #161616; border: 1px solid var(--border); padding: 10px 12px; 
+    border-radius: 4px; cursor: pointer; font-size: 14px; text-align: left; 
+    color: var(--text); display: flex; justify-content: space-between; align-items: center;
+    transition: all 0.2s;
+  }
+  .modal-option-item:hover { border-color: var(--gold); background: #1e1b10; }
+  .modal-option-item.active { border-color: var(--gold); color: var(--gold); background: #1e1b10; }
+
+  /* Date Picker Layout Container */
+  .date-nav-container { display: flex; align-items: center; gap: 12px; margin-bottom: 16px; background: var(--bg2); padding: 10px 16px; border: 1px solid var(--border); border-radius: 4px; width: fit-content; }
+  .date-nav-btn { background: none; border: none; color: var(--gold); cursor: pointer; font-size: 16px; padding: 0 4px; }
+  .date-nav-btn:hover { opacity: 0.8; }
+  .date-display { font-size: 14px; font-weight: 500; color: var(--text); min-width: 100px; text-align: center; }
+
+  /* Utility classes */
+  .chk-label { display: flex; align-items: center; gap: 6px; font-size: 13px; color: #aaa; cursor: pointer; }
+  .chk-label input { accent-color: var(--gold); }
+  .status-badge { font-size: 11px; padding: 2px 6px; border-radius: 3px; text-transform: uppercase; font-weight: bold; }
+  .status-badge.active { background: #122412; color: #8cd08c; border: 1px solid #234723; }
+  .status-badge.completed { background: #222; color: #888; border: 1px solid #333; }
 </style>
 </head>
 <body>
 
-<div id="textMeasureHelper"></div>
-
-<div class="sync-badge" id="syncBadge">
-  <div class="sync-dot" id="syncDot"></div>
-  <span id="syncText">Local</span>
-</div>
-
-<div class="modal-overlay" id="editModal">
-  <div class="modal">
-    <div class="modal-title">Edit Entry</div>
-    <label class="modal-label">What did you do?</label>
-    <input type="text" class="modal-input" id="modalText" placeholder="Describe the activity...">
-    <label class="modal-label">Category</label>
-    <select class="modal-select" id="modalCategory"></select>
-    <label class="modal-label">Related Project (optional)</label>
-    <select class="modal-select" id="modalProject"><option value="">— None —</option></select>
-    <label class="modal-label">Related Skill (optional)</label>
-    <select class="modal-select" id="modalSkill"><option value="">— None —</option></select>
-    <div class="modal-btns">
-      <button class="modal-cancel" onclick="closeModal('editModal')">Cancel</button>
-      <button class="modal-save" onclick="saveEdit()">Save</button>
-    </div>
-  </div>
-</div>
-
-<div class="modal-overlay" id="editSkillModal">
-  <div class="modal" style="max-height: 85vh; overflow-y: auto;">
-    <div class="modal-title">Edit Skill</div>
-    <button class="modal-delete" onclick="deleteCurrentSkill()">⚠️ Delete This Skill</button>
-    <label class="modal-label">Skill name</label>
-    <input type="text" class="modal-input" id="editSkillName" placeholder="Skill name">
-    <label class="modal-label">Subtitle</label>
-    <input type="text" class="modal-input" id="editSkillSub" placeholder="e.g. Callipeg, Procreate...">
-    <label class="modal-label">Modify Skill Connections</label>
-    <div id="editSkillConnectionPicker" style="background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:12px;margin-bottom:14px;max-height:180px;overflow-y:auto;"></div>
-    <div class="modal-btns">
-      <button class="modal-cancel" onclick="closeModal('editSkillModal')">Cancel</button>
-      <button class="modal-save" onclick="updateSkill()">Save</button>
-    </div>
-  </div>
-</div>
-
-<div class="modal-overlay" id="addSkillModal">
-  <div class="modal">
-    <div class="modal-title">New Skill</div>
-    <label class="modal-label">Skill name</label>
-    <input type="text" class="modal-input" id="skillName" placeholder="e.g. Photography, Music...">
-    <label class="modal-label">Subtitle</label>
-    <input type="text" class="modal-input" id="skillSub" placeholder="e.g. Canon R50, Guitar...">
-    <label class="modal-label">Connect to existing skills</label>
-    <div id="skillConnectionPicker" style="background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:12px;margin-bottom:14px;max-height:200px;overflow-y:auto;"></div>
-    <div class="modal-btns">
-      <button class="modal-cancel" onclick="closeModal('addSkillModal')">Cancel</button>
-      <button class="modal-save" onclick="saveSkill()">Add Skill</button>
-    </div>
-  </div>
-</div>
-
-<div class="modal-overlay" id="addCatModal">
-  <div class="modal">
-    <div class="modal-title">New Category</div>
-    <label class="modal-label">Category name</label>
-    <input type="text" class="modal-input" id="newCatName" placeholder="e.g. Podcast, Prayer, Exercise..." maxlength="30">
-    <label class="modal-label">Pick an icon</label>
-    <div class="emoji-picker" id="emojiPicker"></div>
-    <input type="text" class="modal-input" id="newCatIcon" placeholder="Or type any emoji..." maxlength="4" style="margin-top:8px;">
-    <div class="modal-btns" style="margin-top:4px;">
-      <button class="modal-cancel" onclick="closeModal('addCatModal')">Cancel</button>
-      <button class="modal-save" onclick="saveNewCategory()">Add</button>
-    </div>
-  </div>
-</div>
-
-<div class="modal-overlay" id="projectModal">
-  <div class="modal">
-    <div class="modal-title" id="projModalTitle">New Project</div>
-    <label class="modal-label">Project name</label>
-    <input type="text" class="modal-input" id="projName" placeholder="e.g. Babel Animation, Unanswered Book...">
-    <label class="modal-label">Short description (optional)</label>
-    <input type="text" class="modal-input" id="projDesc" placeholder="What is this about?">
-    <label class="modal-label">Linked to Category (auto-tracks days)</label>
-    <select class="modal-select" id="projCategory"></select>
-    <label class="modal-label">Status</label>
-    <select class="modal-select" id="projStatus">
-      <option value="active">🟢 Active</option>
-      <option value="paused">🟡 Paused</option>
-      <option value="completed">✅ Completed</option>
-    </select>
-    <div class="modal-btns">
-      <button class="modal-cancel" onclick="closeModal('projectModal')">Cancel</button>
-      <button class="modal-save" onclick="saveProject()">Save</button>
-    </div>
-  </div>
-</div>
-
 <div class="page-wrap">
-  <div class="header">
-    <div class="header-title">Michael's Productivity Dashboard</div>
-    <div class="header-date" id="headerDate"></div>
-  </div>
+  <header class="header">
+    <h1>Michael's Productivity Dashboard</h1>
+    <div class="sync-status">
+      <span id="syncDot" class="sync-dot"></span>
+      <span id="syncText">Offline Mode</span>
+    </div>
+  </header>
 
-  <div class="top-stats">
-    <div class="stat-box"><div class="stat-number" id="streakNum">0</div><div class="stat-label">Streak</div></div>
-    <div class="stat-box"><div class="stat-number" id="activeDaysNum">0</div><div class="stat-label">Active Days</div></div>
-    <div class="stat-box"><div class="stat-number" id="totalThingsNum">0</div><div class="stat-label">Total Things</div></div>
-  </div>
+  <nav class="nav-tabs">
+    <button class="nav-tab active" onclick="switchTab('today')">Today</button>
+    <button class="nav-tab" onclick="switchTab('projects')">Projects & Core</button>
+    <button class="nav-tab" onclick="switchTab('categories')">Configuration</button>
+  </nav>
 
-  <div class="desktop-grid">
-    <div class="desktop-left">
-      <div class="section" style="display:flex;align-items:center;justify-content:space-between;">
-        <div class="section-label" style="flex:1;margin-bottom:0;">Skills Mind Map</div>
-        <button class="add-cat-btn" style="margin-bottom:14px;" onclick="openAddSkillModal()">+ Skill</button>
-      </div>
-      <div class="map-hint">Drag badges to arrange them • Click to trace pathways • Double-tap to edit/delete</div>
-      <svg id="skillMap"></svg>
-      <div id="connectionInfo"></div>
-
-      <div class="section" style="margin-top:16px;">
-        <div class="section-label">Current Projects</div>
-      </div>
-      <ul class="projects-list" id="projectsList"></ul>
-      <button class="add-proj-btn" onclick="openProjectModal(null)">+ Add Project</button>
+  <section id="tab-today" class="tab-content active">
+    <div class="date-nav-container">
+      <button class="date-nav-btn" onclick="adjustDate(-1)">&#9664;</button>
+      <span id="currentDateDisplay" class="date-display"></span>
+      <button class="date-nav-btn" onclick="adjustDate(1)">&#9654;</button>
     </div>
 
-    <div class="desktop-right">
-      <div class="section">
-        <div class="section-label">Today</div>
+    <div class="today-box">
+      <h2>Log an Accomplishment</h2>
+      <div class="input-group">
+        <textarea id="entryInput" class="entry-textarea" placeholder="Describe what you completed or built..."></textarea>
       </div>
-      <input type="text" class="add-input" id="activityInput"
-        placeholder="Describe what you did today..."
-        onkeydown="if(event.key==='Enter') addEntry()"
-        style="width:100%;margin-bottom:8px;display:block;">
-      <div class="entry-selects">
-        <select class="entry-select" id="entryCategory"><option value="">📂 Category</option></select>
-        <select class="entry-select" id="entryProject"><option value="">📌 Project</option></select>
-        <select class="entry-select" id="entrySkill"><option value="">🎯 Skill</option></select>
+      
+      <div class="meta-buttons-row">
+        <button id="btnSelectProject" class="meta-btn" onclick="openMetaSelectionModal('project')">
+          <span>📁 Project:</span> <strong id="lblSelectedProject">None</strong>
+        </button>
+        <button id="btnSelectSkill" class="meta-btn" onclick="openMetaSelectionModal('skill')">
+          <span>⚡ Skill:</span> <strong id="lblSelectedSkill">None</strong>
+        </button>
+        <button id="btnSelectCategory" class="meta-btn" onclick="openMetaSelectionModal('category')">
+          <span>🏷️ Category:</span> <strong id="lblSelectedCategory">None</strong>
+        </button>
       </div>
-      <button class="add-proj-btn" style="width:100%;margin:6px 0 12px;" onclick="addEntry()">+ Log Entry</button>
-      <ul class="todo-list" id="todoList"></ul>
-      <div class="empty-state" id="emptyState">Nothing logged yet.</div>
 
-      <div class="section" style="margin-top:16px;">
-        <div class="section-label">Last 30 Days</div>
+      <div style="display:flex; justify-content:flex-end;">
+        <button class="btn-submit" onclick="addLogEntry()">Commit Entry</button>
       </div>
-      <div class="days-grid" id="daysGrid"></div>
-
-      <div class="section" style="margin-top:16px;">
-        <div class="section-label">Categories</div>
-      </div>
-      <ul class="cat-section-list" id="catSectionList"></ul>
-      <button class="add-proj-btn" onclick="openAddCatModal()">+ Add Category</button>
     </div>
+
+    <div class="card">
+      <h2>Committed Entries</h2>
+      <div id="logsList" class="logs-list"></div>
+    </div>
+  </section>
+
+  <section id="tab-projects" class="tab-content">
+    <div class="grid-layout">
+      <div>
+        <div class="card">
+          <h2>Create New Project</h2>
+          <div class="form-row">
+            <label>Project Name</label>
+            <input type="text" id="projName" class="form-input" placeholder="e.g., FES Africa Drone Automation">
+          </div>
+          <div class="form-row">
+            <label>Description</label>
+            <input type="text" id="projDesc" class="form-input" placeholder="Objectives or architectural highlights">
+          </div>
+          <div class="form-row">
+            <label>Associated Category</label>
+            <select id="projCat" class="form-select"></select>
+          </div>
+          <div class="form-row">
+            <label>Associated Skill</label>
+            <select id="projSkill" class="form-select"></select>
+          </div>
+          <button class="btn-action" onclick="createProject()">Launch Project</button>
+        </div>
+
+        <div class="card">
+          <h2>Active & Ongoing Projects</h2>
+          <div id="projectContainer"></div>
+        </div>
+      </div>
+
+      <div>
+        <div class="card">
+          <h2>Add Specialized Skill</h2>
+          <div class="form-row">
+            <label>Skill Label</label>
+            <input type="text" id="skillName" class="form-input" placeholder="e.g., PostgreSQL / PL/pgSQL">
+          </div>
+          <button class="btn-action" onclick="createSkill()">Register Skill</button>
+        </div>
+
+        <div class="card">
+          <h2>Registered Skills Matrix</h2>
+          <div id="skillsContainer" class="item-list"></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="tab-categories" class="tab-content">
+    <div class="card" style="max-width: 600px;">
+      <h2>Custom Configuration Categories</h2>
+      <p style="font-size:13px; color:var(--muted); margin-bottom:16px;">
+        Define operations categories dynamically linked to your architecture database logs.
+      </p>
+      <div class="form-row">
+        <label>Category Tag Identifier (Key)</label>
+        <input type="text" id="catKey" class="form-input" placeholder="e.g., development">
+      </div>
+      <div class="form-row">
+        <label>Display Label</label>
+        <input type="text" id="catLabel" class="form-input" placeholder="e.g., Engineering & Dev">
+      </div>
+      <div class="form-row">
+        <label>Visual Symbol / Icon</label>
+        <input type="text" id="catIcon" class="form-input" placeholder="e.g., 💻">
+      </div>
+      <button class="btn-action" onclick="createCategory()">Save Dynamic Category</button>
+      
+      <div id="customCatsContainer" class="item-list" style="margin-top:24px;"></div>
+    </div>
+  </section>
+</div>
+
+<div id="metaModal" class="modal-overlay">
+  <div class="modal-container">
+    <div class="modal-header">
+      <h3 id="metaModalTitle">Select Option</h3>
+      <button class="modal-close" onclick="closeMetaSelectionModal()">&times;</button>
+    </div>
+    <div id="metaModalOptions" class="modal-options-list"></div>
   </div>
 </div>
 
 <script>
-// ── Supabase Initialization ──────────────────────────────
-const SUPABASE_URL = 'https://puzogmzjhttrooofggbo.supabase.co';
-const SUPABASE_KEY = 'sb_publishable_xtT7jEdVAwrIj9450jy2Sg_alK9AuaG';
-const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY, {
-  auth: { persistSession: false, autoRefreshToken: false }
-});
+// SUPABASE SECURE ENDPOINT SYNC HOOKS
+const SUPABASE_URL = "https://twhgmqwzvevclmkmwzvy.supabase.co";
+const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InR3aGdtcXd6dmV2Y2xta213enZ5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3MTU2MTY1MzksImV4cCI6MjAzMTE5MjUzOX0.8N8_U2V_b4R_4-O_wPqQvLz9P6K3F8wU2Vf_B_gR7oM";
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+const USER_ID = "ef7a1d13-68f4-406e-bb89-5f2142f1cfbb";
 
-function getUserId() { return 'user_qd4ygkkif3mprjgv9j'; }
-const USER_ID = getUserId();
+// CORE STATE ENGINE
+let allLogs = {}; 
+let customCats = {}; 
+let allProjects = [];
+let allSkills = [];
+let selectedDateStr = "";
 
-function setSyncing() { document.getElementById('syncDot').className = 'sync-dot yellow'; document.getElementById('syncText').textContent = 'Saving...'; }
-function setSynced()  { document.getElementById('syncDot').className = 'sync-dot green'; document.getElementById('syncText').textContent = 'Synced'; }
-function setOffline() { document.getElementById('syncDot').className = 'sync-dot red'; document.getElementById('syncText').textContent = 'Offline'; }
+// Dynamic tracking variables for the active entry composition
+let currentSelectedProjectId = null;
+let currentSelectedSkillId = null;
+let currentSelectedCategoryKey = null;
+let currentModalType = ""; // 'project', 'skill', 'category'
 
+// HELPER LOCAL BACKUP UTILITIES
 function saveLocal(key, data) { localStorage.setItem(key, JSON.stringify(data)); }
+function getLocal(key) { const data = localStorage.getItem(key); return data ? JSON.parse(data) : null; }
 
-async function syncToSupabase(table, payload, conflictCol) {
-  setSyncing();
-  try {
-    const options = conflictCol ? { onConflict: conflictCol } : {};
-    const { error } = await sb.from(table).upsert(payload, options);
-    if (error) throw error;
-    setSynced();
-    return true;
-  } catch(e) {
-    console.error("Sync breakdown in table " + table + ":", e);
-    setOffline();
-    return false;
-  }
+function getTanzaniaDateString(dateObj) {
+  const d = new Date(dateObj.toLocaleString("en-US", { timeZone: "Africa/Dar_es_Salaam" }));
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
 }
 
-// Global composite saving payload builder for Master AI Table sync
-async function syncToAiProductivityTable() {
-  const masterPayload = {
-    user_id: USER_ID,
-    activity_logs: allLogs,
-    custom_categories: customCats,
-    projects: allProjects,
-    skills: allSkills,
-    skill_connections: allConnections,
-    updated_at: new Date().toISOString()
-  };
-  await syncToSupabase('productivity_ai_master', masterPayload, 'user_id');
-}
-
-// ── Default Categories & Mind Map Objects ────────────────────
-const HABITS_DEFAULT = {
-  writing:      { label:"Writing / Editing",   icon:"✍️" },
-  animation:    { label:"Animation",            icon:"🎬" },
-  design:       { label:"Design / Cover work",  icon:"🎨" },
-  coding:       { label:"Website / Coding",     icon:"💻" },
-  reading:      { label:"Reading",              icon:"📖" },
-  community:    { label:"Community / Outreach", icon:"🤝" },
-  instagram:    { label:"Instagram Post",       icon:"📱" },
-  vibe:         { label:"Vibe Gift Shop",       icon:"🎁" },
-  book_hangout: { label:"Book Hangout",         icon:"📚" },
-  epicenter:    { label:"Epicenter of Life",    icon:"🌍" },
-  other:        { label:"Other",                icon:"⚡" },
-};
-
-const SKILLS_DEFAULT = [
-  { id:"writing",   label:"Writing",    sub:"Poetry & Books",     x: 220, y: 70 },
-  { id:"animation", label:"Animation",  sub:"Callipeg App",       x: 90,  y: 160 },
-  { id:"drawing",   label:"Drawing",    sub:"Procreate Engine",   x: 90,  y: 300 },
-  { id:"design",    label:"Design",     sub:"Graphic & Covers",   x: 220, y: 390 },
-  { id:"community", label:"Community",  sub:"Book Hangout Core",  x: 350, y: 300 },
-  { id:"faith",     label:"Faith",      sub:"Biblical Study",     x: 350, y: 160 },
-  { id:"coding",    label:"Coding",     sub:"Web Architecture",   x: 220, y: 230 },
-  { id:"reading",   label:"Reading",    sub:"Resource Engine",    x: 70,  y: 40 },
-];
-
-const CONNECTIONS_DEFAULT = [
-  { from:"writing",   to:"animation",  label:"Animated stories with message" },
-  { from:"writing",   to:"design",     label:"Book covers & posters" },
-  { from:"writing",   to:"faith",      label:"Friend of God / Unanswered" },
-  { from:"writing",   to:"community",  label:"Books that start conversations" },
-  { from:"animation", to:"drawing",    label:"Frame by frame storytelling" },
-  { from:"drawing",   to:"design",     label:"Visual language" },
-  { from:"design",    to:"coding",     label:"Portfolio & web presence" },
-  { from:"coding",    to:"community",  label:"Platforms for people" },
-  { from:"faith",     to:"community",  label:"Epicenter of Life" },
-  { from:"reading",   to:"writing",    label:"Fuel for ideas" },
-  { from:"reading",   to:"community",  label:"Book Hangout events" },
-  { from:"faith",     to:"writing",    label:"Questions worth asking" },
-];
-
-const EMOJI_OPTIONS = ['🎯','🔥','💡','🎙️','🙏','💪','🧘','🏃','🎵','✏️','🎤','📝','🧠','💬','🌱','⭐','🎓','🛠️','📊','💼'];
-
-let selectedEmoji = '⭐';
-let editingSkillId = null;
-let editingEntryIndex = -1;
-let editingProject = null;
-let activeSkill = null;
-
-let draggedNode = null;
-let dragOffsetX = 0;
-let dragOffsetY = 0;
-let hasDraggedSignificant = false;
-
-let allLogs = JSON.parse(localStorage.getItem('msilas-logs') || '{}');
-let customCats = JSON.parse(localStorage.getItem('msilas-cats') || '{}');
-let allProjects = JSON.parse(localStorage.getItem('msilas-projs') || '[]');
-let allSkills = JSON.parse(localStorage.getItem('msilas-skills') || '[]');
-let allConnections = JSON.parse(localStorage.getItem('msilas-connections') || '[]');
-
-if (allSkills.length === 0) { allSkills = [...SKILLS_DEFAULT]; localStorage.setItem('msilas-skills', JSON.stringify(allSkills)); }
-if (allConnections.length === 0) { allConnections = [...CONNECTIONS_DEFAULT]; localStorage.setItem('msilas-connections', JSON.stringify(allConnections)); }
-
-function allHabits() { return Object.keys(customCats).length > 0 ? customCats : HABITS_DEFAULT; }
-function todayKey() { return new Date().toISOString().split('T')[0]; }
-function last30() {
-  const days = [], t = new Date();
-  for (let i = 29; i >= 0; i--) { const d = new Date(t); d.setDate(t.getDate() - i); days.push(d.toISOString().split('T')[0]); }
-  return days;
-}
-function fmtDate(s) { return new Date(s + 'T00:00:00').toLocaleDateString('en-US', { month:'short', day:'numeric' }); }
-function fmtTime(s) { return new Date(s).toLocaleTimeString('en-US', { hour:'numeric', minute:'2-digit' }); }
-
-function calcStreak(logs) {
-  let n = 0, t = new Date();
-  for (let i = 0; i < 365; i++) {
-    const d = new Date(t); d.setDate(t.getDate() - i);
-    const k = d.toISOString().split('T')[0];
-    if (logs[k] && logs[k].length > 0) n++;
-    else if (i > 0) break;
-  }
-  return n;
-}
-
-function estimateTextWidth(text, fontClass) {
-  const helper = document.getElementById('textMeasureHelper');
-  if (fontClass === 'title') {
-    helper.style.fontFamily = "'Playfair Display', serif";
-    helper.style.fontSize = "13px";
-    helper.style.fontWeight = "700";
-  } else {
-    helper.style.fontFamily = "'Lora', serif";
-    helper.style.fontSize = "9.5px";
-    helper.style.fontWeight = "400";
-  }
-  helper.textContent = text;
-  return helper.offsetWidth || 60;
-}
-
-function populateSelects() {
-  const opts = Object.entries(allHabits()).map(([k,v]) => `<option value="${k}">${v.icon} ${v.label}</option>`).join('');
-  const projOpts = `<option value="">— None —</option>` + Object.entries(allHabits()).map(([k,v]) => `<option value="${k}">${v.icon} ${v.label}</option>`).join('');
-  
-  ['categorySelect','modalCategory'].forEach(id => {
-    const el = document.getElementById(id); if (!el) return;
-    const cur = el.value; el.innerHTML = opts; if (cur) el.value = cur;
-  });
-  
-  const pSel = document.getElementById('projCategory');
-  if (pSel) { const cur = pSel.value; pSel.innerHTML = projOpts; if (cur) pSel.value = cur; }
-}
-
-function renderAll() {
-  const today = todayKey();
-  const entries = allLogs[today] || [];
-  const days = last30();
-
-  document.getElementById('headerDate').textContent = fmtDate(today);
-  const activeDays = days.filter(d => allLogs[d] && allLogs[d].length > 0).length;
-  const total = days.reduce((s, d) => s + (allLogs[d] ? allLogs[d].length : 0), 0);
-  
-  document.getElementById('streakNum').textContent = calcStreak(allLogs);
-  document.getElementById('activeDaysNum').textContent = activeDays;
-  document.getElementById('totalThingsNum').textContent = total;
-
-  const list = document.getElementById('todoList');
-  const empty = document.getElementById('emptyState');
-  list.innerHTML = '';
-  empty.style.display = entries.length === 0 ? 'block' : 'none';
-  
-  entries.forEach((e, i) => {
-    const habit = allHabits()[e.category] || HABITS_DEFAULT.other;
-    const li = document.createElement('li');
-    li.className = 'todo-item';
-    const proj  = e.project_id ? allProjects.find(p => p.id === e.project_id) : null;
-    const skillSrc = allSkills.length > 0 ? allSkills : SKILLS_DEFAULT;
-    const skill = e.skill_id  ? skillSrc.find(s => (s.id||s.key) === e.skill_id) : null;
-    li.innerHTML = `
-      <span class="todo-icon">${habit.icon}</span>
-      <div class="todo-content">
-        <div class="todo-cat">${habit.label}</div>
-        <div class="todo-text">${e.text || '&mdash;'}</div>
-        <div class="entry-badges">
-          ${proj  ? `<span class="entry-badge">📌 ${proj.name}</span>`  : ''}
-          ${skill ? `<span class="entry-badge">🎯 ${skill.label}</span>` : ''}
-        </div>
-        <div class="todo-time">${fmtTime(e.timestamp)}</div>
-      </div>
-      <div class="todo-btns">
-        <button class="icon-btn" onclick="openEditEntry(${i})">✎</button>
-        <button class="icon-btn del" onclick="deleteEntry(${i})">×</button>
-      </div>`;
-    list.appendChild(li);
-  });
-
-  const grid = document.getElementById('daysGrid');
-  grid.innerHTML = '';
-  days.forEach(day => {
-    const ents = allLogs[day] || [];
-    const isToday = day === today;
-    const cell = document.createElement('div');
-    cell.className = 'day-cell' + (ents.length > 0 ? ' has-entries' : '') + (isToday ? ' is-today' : '');
-    cell.innerHTML = `<div class="day-tip">${fmtDate(day)}${ents.length > 0 ? ' · ' + ents.length : ''}</div>
-      ${ents.length > 0 ? `<span class="day-count">${ents.length}</span>` : isToday ? '<div class="today-dot"></div>' : ''}`;
-    grid.appendChild(cell);
-  });
-}
-
-function renderProjects() {
-  const list = document.getElementById('projectsList');
-  list.innerHTML = '';
-  if (!allProjects || allProjects.length === 0) {
-    list.innerHTML = '<li style="color:#2a2a2a;font-size:13px;font-style:italic;padding:10px 0;">No projects yet.</li>';
-    return;
-  }
-  
-  const active = allProjects.filter(p => p.status === 'active' || p.status === 'paused');
-  const completed = allProjects.filter(p => p.status === 'completed');
-
-  if (active.length > 0) active.forEach(p => list.appendChild(buildProjectItem(p)));
-  if (completed.length > 0) {
-    const divider = document.createElement('li');
-    divider.innerHTML = '<div style="font-size:10px;color:#333;text-transform:uppercase;letter-spacing:1px;padding:12px 0 8px;">Completed</div>';
-    list.appendChild(divider);
-    completed.forEach(p => list.appendChild(buildProjectItem(p)));
-  }
-}
-
-function buildProjectItem(p) {
-  const dotColor = p.status === 'active' ? '#4a9a4a' : p.status === 'completed' ? '#4a7a9a' : '#886633';
-  const statusLabel = p.status === 'active' ? '● Active' : p.status === 'completed' ? '✓ Completed' : '● Paused';
-  const statusClass = p.status === 'active' ? 'status-active' : p.status === 'completed' ? 'status-completed' : 'status-paused';
-  const habit = allHabits()[p.related_category];
-  const catString = habit ? `${habit.icon} ${habit.label}` : p.related_category;
-  const daysCount = p.logged_dates ? p.logged_dates.length : 0;
-  
-  const li = document.createElement('li');
-  li.className = 'project-item';
-  li.innerHTML = `
-    <div class="proj-dot" style="background:${dotColor}"></div>
-    <div class="proj-content">
-      <div class="proj-name">${p.name}</div>
-      ${p.description ? `<div class="proj-desc">${p.description}</div>` : ''}
-      <div style="display:flex;align-items:center;gap:12px;margin-top:5px;flex-wrap:wrap;">
-        <div class="proj-status ${statusClass}">${statusLabel}</div>
-        ${p.related_category ? `<div style="font-size:10px;color:#555;">${catString}</div>` : ''}
-        ${daysCount > 0 ? `<div style="font-size:10px;color:var(--gold);">📅 ${daysCount} day${daysCount !== 1 ? 's' : ''}</div>` : ''}
-      </div>
-    </div>
-    <div class="proj-btns">
-      <button class="icon-btn" onclick="openProjectModal('${p.id}')">✎</button>
-      <button class="icon-btn del" onclick="handleDeleteProject('${p.id}')">×</button>
-    </div>`;
-  return li;
-}
-
-function addEntry() {
-  const input = document.getElementById('activityInput');
-  const text = input.value.trim();
-  const cat = document.getElementById('categorySelect').value;
-  const today = todayKey();
-  
-  if (!allLogs[today]) allLogs[today] = [];
-  allLogs[today].push({ text, category: cat, timestamp: new Date().toISOString() });
-  saveLocal('msilas-logs', allLogs);
-  input.value = '';
-  renderAll();
-  autoTrackProjects(cat, today);
-  syncToSupabase('activity_logs', { user_id: USER_ID, date: today, entries: allLogs[today], updated_at: new Date().toISOString() }, 'user_id,date');
-  syncToAiProductivityTable();
-}
-
-function autoTrackProjects(category, date) {
-  let updatedProjects = [];
-
-  allProjects = allProjects.map(p => {
-    const pCats = Array.isArray(p.related_categories) && p.related_categories.length > 0
-      ? p.related_categories
-      : (p.related_category ? [p.related_category] : []);
-    if (p.status === 'active' && pCats.includes(category)) {
-      if (!p.logged_dates) p.logged_dates = [];
-      if (!p.logged_dates.includes(date)) {
-        const updatedProj = { ...p, logged_dates: [...p.logged_dates, date] };
-        updatedProjects.push(updatedProj);
-        return updatedProj;
-      }
-    }
-    return p;
-  });
-
-  if (updatedProjects.length > 0) {
-    saveLocal('msilas-projs', allProjects);
-    renderProjects();
-    
-    updatedProjects.forEach(p => {
-      syncToSupabase('projects', {
-        id: p.id,
-        user_id: USER_ID,
-        name: p.name,
-        description: p.description || '',
-        status: p.status,
-        related_category: p.related_category || '',
-        logged_dates: p.logged_dates,
-        created_at: p.created_at
-      }, 'id');
-    });
-    syncToAiProductivityTable();
-  }
-}
-
-async function deleteEntry(i) {
-  const today = todayKey();
-  if (allLogs[today]) {
-    allLogs[today].splice(i, 1);
-    saveLocal('msilas-logs', allLogs);
-    renderAll();
-    await syncToSupabase('activity_logs', { user_id: USER_ID, date: today, entries: allLogs[today], updated_at: new Date().toISOString() }, 'user_id,date');
-    await syncToAiProductivityTable();
-  }
-}
-
-function openEditEntry(i) {
-  const entries = allLogs[todayKey()] || [];
-  const entry = entries[i];
-  if (!entry) return;
-  editingEntryIndex = i;
-  document.getElementById('modalText').value = entry.text || '';
-  populateSelects();
-  document.getElementById('modalCategory').value = entry.category || 'other';
-  openModal('editModal');
-  setTimeout(() => document.getElementById('modalText').focus(), 100);
-}
-
-function saveEdit() {
-  if (editingEntryIndex < 0) return;
-  const today = todayKey();
-  if (!allLogs[today] || !allLogs[today][editingEntryIndex]) return;
-  allLogs[today][editingEntryIndex].text = document.getElementById('modalText').value.trim();
-  allLogs[today][editingEntryIndex].category = document.getElementById('modalCategory').value;
-  saveLocal('msilas-logs', allLogs);
-  syncToSupabase('activity_logs', { user_id: USER_ID, date: today, entries: allLogs[today], updated_at: new Date().toISOString() }, 'user_id,date');
-  closeModal('editModal');
-  editingEntryIndex = -1;
-  renderAll();
-  renderProjects();
-  syncToAiProductivityTable();
-}
-
-function openAddCatModal() {
-  selectedEmoji = '⭐';
-  document.getElementById('newCatName').value = '';
-  document.getElementById('newCatIcon').value = '';
-  document.getElementById('emojiPicker').innerHTML = EMOJI_OPTIONS.map(e =>
-    `<span class="emoji-opt${e === selectedEmoji ? ' selected' : ''}" onclick="selectEmoji('${e}',this)">${e}</span>`
-  ).join('');
-  openModal('addCatModal');
-  setTimeout(() => document.getElementById('newCatName').focus(), 100);
-}
-
-function selectEmoji(emoji, el) {
-  selectedEmoji = emoji;
-  document.querySelectorAll('.emoji-opt').forEach(e => e.classList.remove('selected'));
-  el.classList.add('selected');
-  document.getElementById('newCatIcon').value = '';
-}
-
-function saveNewCategory() {
-  const name = document.getElementById('newCatName').value.trim();
-  if (!name) { document.getElementById('newCatName').focus(); return; }
-  const icon = document.getElementById('newCatIcon').value.trim() || selectedEmoji;
-  const key = 'custom_' + Date.now();
-  
-  customCats[key] = { label: name, icon: icon };
-  saveLocal('msilas-cats', customCats);
-  syncToSupabase('custom_categories', { user_id: USER_ID, key, label: name, icon }, 'user_id,key');
-  closeModal('addCatModal');
-  populateSelects();
-  renderCatSection();
-  syncToAiProductivityTable();
-}
-
-function openProjectModal(id) {
-  editingProject = id ? id : null;
-  populateSelects();
-  document.getElementById('projModalTitle').textContent = id ? 'Edit Project' : 'New Project';
-  if (id) {
-    const p = allProjects.find(item => item.id === id);
-    if (p) {
-      document.getElementById('projName').value = p.name || '';
-      document.getElementById('projDesc').value = p.description || '';
-      document.getElementById('projStatus').value = p.status || 'active';
-      document.getElementById('projCategory').value = p.related_category || '';
-    }
-  } else {
-    document.getElementById('projName').value = '';
-    document.getElementById('projDesc').value = '';
-    document.getElementById('projStatus').value = 'active';
-    document.getElementById('projCategory').value = '';
-  }
-  openModal('projectModal');
-  setTimeout(() => document.getElementById('projName').focus(), 100);
-}
-
-async function saveProject() {
-  const name = document.getElementById('projName').value.trim();
-  if (!name) { document.getElementById('projName').focus(); return; }
-  const status = document.getElementById('projStatus').value;
-  const description = document.getElementById('projDesc').value.trim();
-  const related_category = document.getElementById('projCategory').value;
-  
-  let projToSync;
-
-  if (editingProject) {
-    allProjects = allProjects.map(p => p.id === editingProject ? { ...p, name, description, status, related_category } : p);
-    projToSync = allProjects.find(p => p.id === editingProject);
-  } else {
-    const newProj = { id: 'proj_' + Date.now(), name, description, status, related_category, logged_dates: [], created_at: new Date().toISOString() };
-    allProjects.push(newProj);
-    projToSync = newProj;
-  }
-  
-  saveLocal('msilas-projs', allProjects);
-  
-  if (projToSync) {
-    await syncToSupabase('projects', { 
-      id: projToSync.id,
-      user_id: USER_ID, 
-      name: projToSync.name,
-      description: projToSync.description || '',
-      status: projToSync.status,
-      related_category: projToSync.related_category || '',
-      logged_dates: projToSync.logged_dates || [],
-      created_at: projToSync.created_at
-    }, 'id');
-  }
-
-  closeModal('projectModal');
-  editingProject = null;
-  renderProjects();
-  await syncToAiProductivityTable();
-}
-
-async function handleDeleteProject(id) {
-  allProjects = allProjects.filter(p => p.id !== id);
-  saveLocal('msilas-projs', allProjects);
-  try { await sb.from('projects').delete().eq('id', id).eq('user_id', USER_ID); } catch(e) { console.error(e); }
-  renderProjects();
-  await syncToAiProductivityTable();
-}
-
-function openModal(id)  { document.getElementById(id).classList.add('open'); }
-function closeModal(id) { document.getElementById(id).classList.remove('open'); }
-document.querySelectorAll('.modal-overlay').forEach(el => {
-  el.addEventListener('click', function(e) { if (e.target === this) this.classList.remove('open'); });
-});
-
-// ── Mind Map Visualization Layer ────────────────────────
-function buildMap() {
-  const svg = document.getElementById('skillMap');
-  svg.innerHTML = ''; 
-  
-  svg.removeEventListener('mousemove', handleMapMouseMove);
-  svg.removeEventListener('mouseup', handleMapMouseUp);
-  svg.removeEventListener('touchmove', handleMapMouseMove);
-  svg.removeEventListener('touchend', handleMapMouseUp);
-  
-  svg.addEventListener('mousemove', handleMapMouseMove);
-  svg.addEventListener('mouseup', handleMapMouseUp);
-  svg.addEventListener('touchmove', handleMapMouseMove, { passive: false });
-  svg.addEventListener('touchend', handleMapMouseUp);
-  
-  allSkills.forEach(s => {
-    const titleW = estimateTextWidth(s.label, 'title');
-    const subW = s.sub ? estimateTextWidth(s.sub, 'sub') : 0;
-    s.boxW = Math.max(titleW, subW) + 28; 
-    s.boxH = s.sub ? 42 : 32;
-    
-    if (s.x === undefined || s.x === null) s.x = 220 + (Math.random() - 0.5) * 60;
-    if (s.y === undefined || s.y === null) s.y = 220 + (Math.random() - 0.5) * 60;
-  });
-
-  allConnections.forEach(c => {
-    const f = allSkills.find(s => (s.id === c.from || s.key === c.from));
-    const t = allSkills.find(s => (s.id === c.to || s.key === c.to));
-    if (!f || !t) return;
-    
-    const line = document.createElementNS('http://www.w3.org/2000/svg','line');
-    line.setAttribute('x1', f.x); line.setAttribute('y1', f.y);
-    line.setAttribute('x2', t.x); line.setAttribute('y2', t.y);
-    line.dataset.from = c.from; line.dataset.to = c.to;
-    line.setAttribute('class', 'conn-line');
-    svg.appendChild(line);
-
-    const dot = document.createElementNS('http://www.w3.org/2000/svg','circle');
-    dot.setAttribute('cx', (f.x + t.x) / 2);
-    dot.setAttribute('cy', (f.y + t.y) / 2);
-    dot.setAttribute('r', 3);
-    dot.setAttribute('class', 'link-dot');
-    svg.appendChild(dot);
-  });
-  
-  allSkills.forEach(s => {
-    const sid = s.id || s.key;
-    const g = document.createElementNS('http://www.w3.org/2000/svg','g');
-    g.setAttribute('class', 'skill-node');
-    g.dataset.id = sid; g.style.cursor = 'grab'; g.style.transition = 'opacity 0.2s';
-    
-    const rect = document.createElementNS('http://www.w3.org/2000/svg','rect');
-    rect.setAttribute('x', s.x - s.boxW / 2);
-    rect.setAttribute('y', s.y - s.boxH / 2);
-    rect.setAttribute('width', s.boxW);
-    rect.setAttribute('height', s.boxH);
-    rect.setAttribute('class', 'node-rect');
-    
-    const t1 = document.createElementNS('http://www.w3.org/2000/svg','text');
-    t1.setAttribute('x', s.x);
-    t1.setAttribute('y', s.sub ? s.y - 2 : s.y + 4);
-    t1.setAttribute('class', 'node-title');
-    t1.textContent = s.label;
-    
-    g.appendChild(rect);
-    g.appendChild(t1);
-
-    if (s.sub) {
-      const t2 = document.createElementNS('http://www.w3.org/2000/svg','text');
-      t2.setAttribute('x', s.x);
-      t2.setAttribute('y', s.y + 11);
-      t2.setAttribute('class', 'node-sub');
-      t2.textContent = s.sub;
-      g.appendChild(t2);
-    }
-    
-    g.addEventListener('mousedown', (e) => handleNodeDragStart(e, s));
-    g.addEventListener('touchstart', (e) => handleNodeDragStart(e, s), { passive: false });
-    
-    g.addEventListener('click', (e) => {
-      if (hasDraggedSignificant) return;
-      toggleSkill(sid);
-    });
-    
-    g.addEventListener('dblclick', (e) => {
-      e.stopPropagation();
-      openEditSkillModal(sid, s.label, s.sub || '');
-    });
-    
-    svg.appendChild(g);
-  });
-}
-
-function handleNodeDragStart(e, node) {
-  draggedNode = node;
-  hasDraggedSignificant = false;
-  
-  const clientX = e.touches ? e.touches[0].clientX : e.clientX;
-  const clientY = e.touches ? e.touches[0].clientY : e.clientY;
-  
-  const svg = document.getElementById('skillMap');
-  const rect = svg.getBoundingClientRect();
-  
-  const currentMouseX = clientX - rect.left;
-  const currentMouseY = clientY - rect.top;
-  
-  dragOffsetX = currentMouseX - node.x;
-  dragOffsetY = currentMouseY - node.y;
-  
-  const el = svg.querySelector(`g[data-id="${node.id || node.key}"]`);
-  if (el) el.style.cursor = 'grabbing';
-}
-
-function handleMapMouseMove(e) {
-  if (!draggedNode) return;
-  
-  const clientX = e.touches ? e.touches[0].clientX : e.clientX;
-  const clientY = e.touches ? e.touches[0].clientY : e.clientY;
-  
-  const svg = document.getElementById('skillMap');
-  const rect = svg.getBoundingClientRect();
-  
-  let newX = clientX - rect.left - dragOffsetX;
-  let newY = clientY - rect.top - dragOffsetY;
-  
-  if (Math.abs(newX - draggedNode.x) > 2 || Math.abs(newY - draggedNode.y) > 2) {
-    hasDraggedSignificant = true;
-  }
-  
-  newX = Math.max(draggedNode.boxW / 2 + 10, Math.min(rect.width - draggedNode.boxW / 2 - 10, newX));
-  newY = Math.max(draggedNode.boxH / 2 + 10, Math.min(rect.height - draggedNode.boxH / 2 - 10, newY));
-  
-  draggedNode.x = newX;
-  draggedNode.y = newY;
-  
-  updateLivePositions();
-  
-  if(e.cancelable) e.preventDefault();
-}
-
-function handleMapMouseUp() {
-  if (!draggedNode) return;
-  const svg = document.getElementById('skillMap');
-  const el = svg.querySelector(`g[data-id="${draggedNode.id || draggedNode.key}"]`);
-  if (el) el.style.cursor = 'grab';
-  
-  saveLocal('msilas-skills', allSkills);
-  draggedNode = null;
-  syncToAiProductivityTable();
-  setTimeout(() => { hasDraggedSignificant = false; }, 50);
-}
-
-function updateLivePositions() {
-  const svg = document.getElementById('skillMap');
-  
-  allSkills.forEach(s => {
-    const nodeEl = svg.querySelector(`g[data-id="${s.id || s.key}"]`);
-    if (!nodeEl) return;
-    
-    const rect = nodeEl.querySelector('.node-rect');
-    rect.setAttribute('x', s.x - s.boxW / 2);
-    rect.setAttribute('y', s.y - s.boxH / 2);
-    
-    const texts = nodeEl.querySelectorAll('text');
-    if(texts[0]) {
-      texts[0].setAttribute('x', s.x);
-      texts[0].setAttribute('y', s.sub ? s.y - 2 : s.y + 4);
-    }
-    if(texts[1]) {
-      texts[1].setAttribute('x', s.x);
-      texts[1].setAttribute('y', s.y + 11);
-    }
-  });
-
-  const lines = svg.querySelectorAll('.conn-line');
-  lines.forEach(line => {
-    const f = allSkills.find(s => (s.id === line.dataset.from || s.key === line.dataset.from));
-    const t = allSkills.find(s => (s.id === line.dataset.to || s.key === line.dataset.to));
-    if (f && t) {
-      line.setAttribute('x1', f.x); line.setAttribute('y1', f.y);
-      line.setAttribute('x2', t.x); line.setAttribute('y2', t.y);
-    }
-  });
-
-  const dots = svg.querySelectorAll('.link-dot');
-  let idx = 0;
-  allConnections.forEach(c => {
-    const f = allSkills.find(s => (s.id === c.from || s.key === c.from));
-    const t = allSkills.find(s => (s.id === c.to || s.key === c.to));
-    if (f && t && dots[idx]) {
-      dots[idx].setAttribute('cx', (f.x + t.x) / 2);
-      dots[idx].setAttribute('cy', (f.y + t.y) / 2);
-      idx++;
-    }
-  });
-}
-
-function toggleSkill(id) {
-  activeSkill = activeSkill === id ? null : id;
-  document.querySelectorAll('.conn-line').forEach(line => {
-    const active = activeSkill && (line.dataset.from === activeSkill || line.dataset.to === activeSkill);
-    line.setAttribute('stroke', active ? '#E8C547' : '#222');
-    line.setAttribute('stroke-width', active ? '2.5' : '1.5');
-    line.style.opacity = (activeSkill && !active) ? '0.05' : '1';
-  });
-
-  document.querySelectorAll('.link-dot').forEach(dot => {
-    dot.style.opacity = activeSkill ? '0' : '1';
-  });
-
-  document.querySelectorAll('.skill-node').forEach(g => {
-    const sid = g.dataset.id;
-    const isActive = activeSkill === sid;
-    const connected = activeSkill && allConnections.some(c => (c.from === activeSkill && c.to === sid) || (c.to === activeSkill && c.from === sid));
-    const inactive = activeSkill && !isActive && !connected;
-    
-    const rect = g.querySelector('.node-rect');
-    rect.setAttribute('fill', isActive ? '#E8C547' : connected ? '#1e1a08' : '#141414');
-    rect.setAttribute('stroke', (isActive || connected) ? '#E8C547' : '#2a2a2a');
-    
-    g.querySelector('.node-title').setAttribute('fill', isActive ? '#0c0c0c' : '#d0cbc0');
-    g.style.opacity = inactive ? '0.15' : '1';
-  });
-  
-  const el = document.getElementById('connectionInfo');
-  if (!activeSkill) { el.innerHTML = '<div class="map-tagline">Every skill serves the same mission.</div>'; return; }
-  
-  const skill = allSkills.find(s => (s.id === activeSkill || s.key === activeSkill));
-  const conns = allConnections.filter(c => c.from === activeSkill || c.to === activeSkill);
-  
-  el.innerHTML = `<div class="conn-info">
-    <div class="conn-title">${skill.label} connects to:</div>
-    ${conns.map(c => {
-      const oid = c.from === activeSkill ? c.to : c.from;
-      const other = allSkills.find(s => (s.id === oid || s.key === oid));
-      return `<div class="conn-item"><div class="conn-dot"></div>
-        <div><span class="conn-other">${other ? other.label : oid}</span><span class="conn-lbl"> — ${c.label}</span></div></div>`;
-    }).join('')}
-    <button class="clear-btn" onclick="toggleSkill('${activeSkill}')">Clear Track</button>
-  </div>`;
-}
-
-function openEditSkillModal(id, label, sub) {
-  editingSkillId = id;
-  document.getElementById('editSkillName').value = label;
-  document.getElementById('editSkillSub').value = sub;
-  
-  const picker = document.getElementById('editSkillConnectionPicker');
-  picker.innerHTML = allSkills
-    .filter(s => (s.id || s.key) !== id)
-    .map(s => {
-      const sid = s.id || s.key;
-      const existingConn = allConnections.find(c => 
-        (c.from === id && c.to === sid) || (c.to === id && c.from === sid)
-      );
-      const isChecked = existingConn ? 'checked' : '';
-      const showDesc = existingConn ? 'show' : '';
-      const descVal = existingConn ? existingConn.label : '';
-
-      return `<div class="skill-conn-item">
-        <input type="checkbox" class="skill-conn-check" id="edit_conn_${sid}" value="${sid}" ${isChecked} onchange="toggleConnDesc(this)">
-        <div style="flex:1;">
-          <label class="skill-conn-label" for="edit_conn_${sid}">${s.label}</label>
-          <input type="text" class="skill-conn-desc ${showDesc}" id="desc_${sid}" value="${descVal}" placeholder="How do they connect?">
-        </div>
-      </div>`;
-    }).join('');
-
-  openModal('editSkillModal');
-  setTimeout(() => document.getElementById('editSkillName').focus(), 100);
-}
-
-async function updateSkill() {
-  const label = document.getElementById('editSkillName').value.trim();
-  const sub = document.getElementById('editSkillSub').value.trim();
-  if (!label || !editingSkillId) return;
-  
-  allSkills = allSkills.map(s => (s.id === editingSkillId || s.key === editingSkillId) ? { ...s, label, sub } : s);
-  saveLocal('msilas-skills', allSkills);
-  await syncToSupabase('skills', { user_id: USER_ID, key: editingSkillId, label, sub }, 'user_id,key');
-
-  allConnections = allConnections.filter(c => c.from !== editingSkillId && c.to !== editingSkillId);
-  try { await sb.from('skill_connections').delete().or(`from_skill.eq.${editingSkillId},to_skill.eq.${editingSkillId}`).eq('user_id', USER_ID); } catch(e){}
-
-  const promises = [];
-  document.querySelectorAll('#editSkillConnectionPicker .skill-conn-check:checked').forEach(cb => {
-    const toId = cb.value;
-    const container = cb.closest('.skill-conn-item');
-    const lbl = container.querySelector('.skill-conn-desc').value.trim() || `${label} meets ${toId}`;
-    allConnections.push({ from: editingSkillId, to: toId, label: lbl });
-    promises.push(syncToSupabase('skill_connections', { user_id: USER_ID, from_skill: editingSkillId, to_skill: toId, label: lbl }, 'user_id,from_skill,to_skill'));
-  });
-  saveLocal('msilas-connections', allConnections);
-  await Promise.all(promises);
-
-  closeModal('editSkillModal');
-  editingSkillId = null;
-  buildMap();
-  toggleSkill(null);
-  await syncToAiProductivityTable();
-}
-
-async function deleteCurrentSkill() {
-  if (!editingSkillId) return;
-  if (!confirm("Are you sure you want to completely delete this skill and all its connection links?")) return;
-
-  allSkills = allSkills.filter(s => (s.id !== editingSkillId && s.key !== editingSkillId));
-  saveLocal('msilas-skills', allSkills);
-  try { await sb.from('skills').delete().eq('key', editingSkillId).eq('user_id', USER_ID); } catch(e){}
-
-  allConnections = allConnections.filter(c => c.from !== editingSkillId && c.to !== editingSkillId);
-  saveLocal('msilas-connections', allConnections);
-  try { await sb.from('skill_connections').delete().or(`from_skill.eq.${editingSkillId},to_skill.eq.${editingSkillId}`).eq('user_id', USER_ID); } catch(e){}
-
-  closeModal('editSkillModal');
-  editingSkillId = null;
-  buildMap();
-  toggleSkill(null);
-  await syncToAiProductivityTable();
-}
-
-function openAddSkillModal() {
-  document.getElementById('skillName').value = '';
-  document.getElementById('skillSub').value = '';
-  const picker = document.getElementById('skillConnectionPicker');
-  picker.innerHTML = allSkills.map(s => {
-    const sid = s.id || s.key;
-    return `<div class="skill-conn-item">
-      <input type="checkbox" class="skill-conn-check" id="add_conn_${sid}" value="${sid}" onchange="toggleConnDesc(this)">
-      <div style="flex:1;"><label class="skill-conn-label" for="add_conn_${sid}">${s.label}</label>
-      <input type="text" class="skill-conn-desc" id="desc_${sid}" placeholder="How do they connect?"></div></div>`;
-  }).join('');
-  openModal('addSkillModal');
-  setTimeout(() => document.getElementById('skillName').focus(), 100);
-}
-
-function toggleConnDesc(cb) {
-  const container = cb.closest('.skill-conn-item');
-  const d = container.querySelector('.skill-conn-desc');
-  if (d) d.classList.toggle('show', cb.checked);
-}
-
-async function saveSkill() {
-  const label = document.getElementById('skillName').value.trim();
-  const sub = document.getElementById('skillSub').value.trim();
-  if (!label) { document.getElementById('skillName').focus(); return; }
-  
-  const key = 'skill_' + Date.now();
-  const newSkill = { id: key, key, label, sub, x: 220, y: 220 };
-  allSkills.push(newSkill);
-  saveLocal('msilas-skills', allSkills);
-  await syncToSupabase('skills', { user_id: USER_ID, key, label, sub }, 'user_id,key');
-
-  const promises = [];
-  document.querySelectorAll('#skillConnectionPicker .skill-conn-check:checked').forEach(cb => {
-    const toId = cb.value;
-    const container = cb.closest('.skill-conn-item');
-    const lbl = container.querySelector('.skill-conn-desc').value.trim() || `${label} meets ${toId}`;
-    allConnections.push({ from: key, to: toId, label: lbl });
-    promises.push(syncToSupabase('skill_connections', { user_id: USER_ID, from_skill: key, to_skill: toId, label: lbl }, 'user_id,from_skill,to_skill'));
-  });
-  saveLocal('msilas-connections', allConnections);
-  await Promise.all(promises);
-
-  closeModal('addSkillModal');
-  buildMap();
-  toggleSkill(null);
-  await syncToAiProductivityTable();
-}
-
-// ── Dashboard Lifecycle Initialization ──────────────────────────────
-
-// ── Category management ───────────────────────────────────
-let editingCatKey  = null;
-let editingCatEmoji = '⭐';
-
-function renderCatSection() {
-  const el = document.getElementById('catSectionList');
-  if (!el) return;
-  el.innerHTML = '';
-  const habits = allHabits();
-  if (Object.keys(habits).length === 0) {
-    const li = document.createElement('li');
-    li.style.cssText = 'color:#333;font-size:12px;font-style:italic;padding:8px 0;';
-    li.textContent = 'No categories yet.';
-    el.appendChild(li);
-    return;
-  }
-  Object.entries(habits).forEach(([key, val]) => {
-    const li = document.createElement('li');
-    li.className = 'cat-section-item';
-    li.innerHTML = '<span class="cat-section-icon">' + val.icon + '</span>' +
-      '<span class="cat-section-label">' + val.label + '</span>';
-    const editBtn = document.createElement('button');
-    editBtn.className = 'icon-btn';
-    editBtn.textContent = '✎';
-    editBtn.title = 'Edit';
-    editBtn.addEventListener('click', () => openEditCategory(key));
-    const delBtn = document.createElement('button');
-    delBtn.className = 'icon-btn del';
-    delBtn.textContent = '×';
-    delBtn.title = 'Delete';
-    delBtn.addEventListener('click', () => deleteCategory(key));
-    li.appendChild(editBtn);
-    li.appendChild(delBtn);
-    el.appendChild(li);
-  });
-}
-
-function openEditCategory(key) {
-  const cat = allHabits()[key];
-  if (!cat) return;
-  editingCatKey   = key;
-  editingCatEmoji = cat.icon;
-  document.getElementById('editCatName').value = cat.label;
-  document.getElementById('editCatIcon').value = '';
-  const picker = document.getElementById('editEmojiPicker');
-  picker.innerHTML = '';
-  EMOJI_OPTIONS.forEach(e => {
-    const span = document.createElement('span');
-    span.className = 'emoji-opt' + (e === editingCatEmoji ? ' selected' : '');
-    span.textContent = e;
-    span.addEventListener('click', function() {
-      editingCatEmoji = e;
-      document.querySelectorAll('#editEmojiPicker .emoji-opt').forEach(s => s.classList.remove('selected'));
-      this.classList.add('selected');
-      document.getElementById('editCatIcon').value = '';
-    });
-    picker.appendChild(span);
-  });
-  openModal('editCatModal');
-  setTimeout(() => document.getElementById('editCatName').focus(), 100);
-}
-
-function saveEditCategory() {
-  if (!editingCatKey) return;
-  const label = document.getElementById('editCatName').value.trim();
-  if (!label) { document.getElementById('editCatName').focus(); return; }
-  const icon = document.getElementById('editCatIcon').value.trim() || editingCatEmoji;
-  customCats[editingCatKey] = { label, icon };
-  saveLocal('msilas-cats', customCats);
-  syncToSupabase('custom_categories', { user_id: USER_ID, key: editingCatKey, label, icon }, 'user_id,key');
-  closeModal('editCatModal');
-  editingCatKey = null;
-  populateSelects();
-  renderCatSection();
-}
-
-async function deleteCategory(key) {
-  if (!customCats[key]) return;
-  delete customCats[key];
-  saveLocal('msilas-cats', customCats);
-  try {
-    await sb.from('custom_categories').delete().eq('key', key).eq('user_id', USER_ID);
-  } catch(e) { console.error('Cat delete failed:', e); }
-  populateSelects();
-  renderCatSection();
-}
-
+// APPLICATION STARTUP & HYDRATION
 async function init() {
   document.getElementById('syncDot').className = 'sync-dot yellow';
-  document.getElementById('syncText').textContent = 'Loading...';
+  document.getElementById('syncText').textContent = 'Loading system parameters...';
+
+  const today = new Date();
+  selectedDateStr = getTanzaniaDateString(today);
+  document.getElementById('currentDateDisplay').textContent = selectedDateStr;
+
+  // Hydrate Cache instantly if structural arrays are offline
+  if(getLocal('msilas-logs')) { allLogs = getLocal('msilas-logs'); }
+  if(getLocal('msilas-cats')) { customCats = getLocal('msilas-cats'); }
+  if(getLocal('msilas-projects')) { allProjects = getLocal('msilas-projects'); }
+  if(getLocal('msilas-skills')) { allSkills = getLocal('msilas-skills'); }
+
+  renderLogs();
+  populateSelects();
+  renderProjectSection();
+  renderSkillsSection();
+  renderCatSection();
 
   try {
-    const { data: logData } = await sb.from('activity_logs').select('date,entries').eq('user_id', USER_ID);
-    if (logData && logData.length > 0) {
-      logData.forEach(r => { allLogs[r.date] = r.entries; });
-      saveLocal('msilas-logs', allLogs);
-    }
-
-    const { data: catData } = await sb.from('custom_categories').select('key,label,icon').eq('user_id', USER_ID);
-    if (catData && catData.length > 0) {
+    // 1. Fetch Dynamic Custom Categories (No defaults hardcoded)
+    const { data: catData, error: catErr } = await sb.from('custom_categories').select('key,label,icon').eq('user_id', USER_ID);
+    if (!catErr && catData) {
+      customCats = {};
       catData.forEach(r => { customCats[r.key] = { label: r.label, icon: r.icon }; });
       saveLocal('msilas-cats', customCats);
     }
 
-    const { data: projData } = await sb.from('projects').select('*').eq('user_id', USER_ID).order('created_at');
-    if (projData && projData.length > 0) {
+    // 2. Fetch Skills Matrix
+    const { data: skillData, error: skillErr } = await sb.from('skills').select('*').eq('user_id', USER_ID).order('name');
+    if (!skillErr && skillData) {
+      allSkills = skillData;
+      saveLocal('msilas-skills', allSkills);
+    }
+
+    // 3. Fetch Master Projects Registry
+    const { data: projData, error: projErr } = await sb.from('projects').select('*').eq('user_id', USER_ID).order('created_at');
+    if (!projErr && projData) {
       allProjects = projData.map(p => ({ 
         ...p, 
         description: p.description || '', 
         related_category: p.related_category || '',
-        logged_dates: p.logged_dates || []
+        related_skill_id: p.related_skill_id || p.skill_id || null,
+        logged_dates: p.logged_dates || [],
+        activity_count: p.activity_count || 0
       }));
-      saveLocal('msilas-projs', allProjects);
+      saveLocal('msilas-projects', allProjects);
     }
 
-    setSynced();
+    // 4. Fetch Core Aggregated Logs
+    const { data: logData, error: logErr } = await sb.from('activity_logs').select('date,entries').eq('user_id', USER_ID);
+    if (!logErr && logData) {
+      allLogs = {};
+      logData.forEach(r => { allLogs[r.date] = r.entries; });
+      saveLocal('msilas-logs', allLogs);
+    }
+
+    document.getElementById('syncDot').className = 'sync-dot green';
+    document.getElementById('syncText').textContent = 'Live Synced to Cloud DB';
+
   } catch(e) {
-    console.error("Initialization pipeline failure:", e);
-    setOffline();
+    console.error("Hydration connection fallback triggered:", e);
+    document.getElementById('syncDot').className = 'sync-dot red';
+    document.getElementById('syncText').textContent = 'Local Engine Buffer';
   }
 
-  buildMap();
-  toggleSkill(null);
+  // Final UI Synchronized Refresh
   populateSelects();
-  renderAll();
-  renderProjects();
+  renderLogs();
+  renderProjectSection();
+  renderSkillsSection();
   renderCatSection();
 }
 
-init();
+// DATE CONTROL MANAGEMENT
+function adjustDate(days) {
+  const parts = selectedDateStr.split('-');
+  const current = new Date(parts[0], parts[1] - 1, parts[2]);
+  current.setDate(current.getDate() + days);
+  selectedDateStr = getTanzaniaDateString(current);
+  document.getElementById('currentDateDisplay').textContent = selectedDateStr;
+  
+  // Clear modal tracking choices on date jumps to avoid logical leaks
+  clearMetaSelection();
+  renderLogs();
+}
+
+// INTERFACE NAVIGATION
+function switchTab(tabId) {
+  document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+  
+  event.target.classList.add('active');
+  document.getElementById(`tab-${tabId}`).classList.add('active');
+}
+
+// DYNAMIC MODAL ENGINE IMPLEMENTATION
+function openMetaSelectionModal(type) {
+  currentModalType = type;
+  const overlay = document.getElementById('metaModal');
+  const title = document.getElementById('metaModalTitle');
+  const optionsContainer = document.getElementById('metaModalOptions');
+  
+  optionsContainer.innerHTML = '';
+  overlay.classList.add('active');
+  
+  // Clear Choice Node Injection
+  const clearOption = document.createElement('button');
+  clearOption.className = "modal-option-item";
+  clearOption.style.borderColor = "var(--red)";
+  clearOption.innerHTML = `<span>❌ Clear Selection</span>`;
+  clearOption.onclick = () => {
+    applyMetaChoice(null);
+    closeMetaSelectionModal();
+  };
+  optionsContainer.appendChild(clearOption);
+
+  if (type === 'project') {
+    title.textContent = "Associate Project Target";
+    // Render only active projects for clean contextual logging
+    const activeProjects = allProjects.filter(p => p.status !== 'completed');
+    if (activeProjects.length === 0) {
+      optionsContainer.innerHTML += `<div style="font-size:13px; color:var(--muted); padding:10px;">No ongoing project parameters found.</div>`;
+    }
+    activeProjects.forEach(p => {
+      const btn = document.createElement('button');
+      btn.className = `modal-option-item ${currentSelectedProjectId === p.id ? 'active' : ''}`;
+      btn.innerHTML = `<div><strong>${p.name}</strong><br><small style="color:var(--muted)">Count: ${p.activity_count || 0}</small></div><span>➔</span>`;
+      btn.onclick = () => { applyMetaChoice(p.id); closeMetaSelectionModal(); };
+      optionsContainer.appendChild(btn);
+    });
+  } 
+  else if (type === 'skill') {
+    title.textContent = "Associate Specialized Skill";
+    if (allSkills.length === 0) {
+      optionsContainer.innerHTML += `<div style="font-size:13px; color:var(--muted); padding:10px;">No operational skills registered.</div>`;
+    }
+    allSkills.forEach(s => {
+      const btn = document.createElement('button');
+      btn.className = `modal-option-item ${currentSelectedSkillId === s.id ? 'active' : ''}`;
+      btn.innerHTML = `<span>⚡ ${s.name}</span><span>➔</span>`;
+      btn.onclick = () => { applyMetaChoice(s.id); closeMetaSelectionModal(); };
+      optionsContainer.appendChild(btn);
+    });
+  } 
+  else if (type === 'category') {
+    title.textContent = "Associate Configuration Category";
+    const keys = Object.keys(customCats);
+    if (keys.length === 0) {
+      optionsContainer.innerHTML += `<div style="font-size:13px; color:var(--muted); padding:10px;">No dynamic categories provisioned.</div>`;
+    }
+    keys.forEach(k => {
+      const btn = document.createElement('button');
+      btn.className = `modal-option-item ${currentSelectedCategoryKey === k ? 'active' : ''}`;
+      btn.innerHTML = `<span>${customCats[k].icon || '🏷️'} ${customCats[k].label}</span><span>➔</span>`;
+      btn.onclick = () => { applyMetaChoice(k); closeMetaSelectionModal(); };
+      optionsContainer.appendChild(btn);
+    });
+  }
+}
+
+function closeMetaSelectionModal() {
+  document.getElementById('metaModal').classList.remove('active');
+}
+
+// METADATA INTEGRATION LOGIC WITH CASCADE SELECTION
+function applyMetaChoice(val) {
+  if (currentModalType === 'project') {
+    currentSelectedProjectId = val;
+    if (val) {
+      const matchProj = allProjects.find(p => p.id === val);
+      document.getElementById('lblSelectedProject').textContent = matchProj ? matchProj.name : "None";
+      document.getElementById('btnSelectProject').classList.add('selected');
+      
+      // CRITICAL REQUIREMENT: Auto-cascade related structural skill & category targets defined within project parameters
+      if (matchProj) {
+        if (matchProj.related_skill_id) {
+          currentSelectedSkillId = matchProj.related_skill_id;
+          const targetSkill = allSkills.find(s => s.id === currentSelectedSkillId);
+          document.getElementById('lblSelectedSkill').textContent = targetSkill ? targetSkill.name : "None";
+          document.getElementById('btnSelectSkill').classList.add('selected');
+        }
+        if (matchProj.related_category) {
+          currentSelectedCategoryKey = matchProj.related_category;
+          const targetCat = customCats[currentSelectedCategoryKey];
+          document.getElementById('lblSelectedCategory').textContent = targetCat ? `${targetCat.icon} ${targetCat.label}` : "None";
+          document.getElementById('btnSelectCategory').classList.add('selected');
+        }
+      }
+    } else {
+      document.getElementById('lblSelectedProject').textContent = "None";
+      document.getElementById('btnSelectProject').classList.remove('selected');
+    }
+  } 
+  else if (currentModalType === 'skill') {
+    currentSelectedSkillId = val;
+    if (val) {
+      const s = allSkills.find(sk => sk.id === val);
+      document.getElementById('lblSelectedSkill').textContent = s ? s.name : "None";
+      document.getElementById('btnSelectSkill').classList.add('selected');
+    } else {
+      document.getElementById('lblSelectedSkill').textContent = "None";
+      document.getElementById('btnSelectSkill').classList.remove('selected');
+    }
+  } 
+  else if (currentModalType === 'category') {
+    currentSelectedCategoryKey = val;
+    if (val) {
+      const c = customCats[val];
+      document.getElementById('lblSelectedCategory').textContent = c ? `${c.icon} ${c.label}` : "None";
+      document.getElementById('btnSelectCategory').classList.add('selected');
+    } else {
+      document.getElementById('lblSelectedCategory').textContent = "None";
+      document.getElementById('btnSelectCategory').classList.remove('selected');
+    }
+  }
+}
+
+function clearMetaSelection() {
+  currentSelectedProjectId = null;
+  currentSelectedSkillId = null;
+  currentSelectedCategoryKey = null;
+  
+  document.getElementById('lblSelectedProject').textContent = "None";
+  document.getElementById('btnSelectProject').classList.remove('selected');
+  document.getElementById('lblSelectedSkill').textContent = "None";
+  document.getElementById('btnSelectSkill').classList.remove('selected');
+  document.getElementById('lblSelectedCategory').textContent = "None";
+  document.getElementById('btnSelectCategory').classList.remove('selected');
+}
+
+// COMMITTING LOG ENTRIES TO SUPABASE ARCHITECTURE
+async function addLogEntry() {
+  const inputEl = document.getElementById('entryInput');
+  const txt = inputEl.value.trim();
+  if(!txt) return;
+
+  const timestampStr = new Date().toLocaleTimeString("en-US", { hour12: false, timeZone: "Africa/Dar_es_Salaam" });
+  
+  // Package complex operational tracking metadata metrics inside object definition
+  const entryObj = {
+    id: 'entry_' + Date.now() + '_' + Math.random().toString(36).substr(2, 4),
+    text: txt,
+    time: timestampStr,
+    project_id: currentSelectedProjectId,
+    skill_id: currentSelectedSkillId,
+    category_key: currentSelectedCategoryKey
+  };
+
+  if(!allLogs[selectedDateStr]) { allLogs[selectedDateStr] = []; }
+  allLogs[selectedDateStr].push(entryObj);
+  saveLocal('msilas-logs', allLogs);
+
+  renderLogs();
+  inputEl.value = "";
+
+  // INCREMENT DYNAMIC COLUMN COUNT FOR ATTACHED PROJECT
+  if (currentSelectedProjectId) {
+    const targetProject = allProjects.find(p => p.id === currentSelectedProjectId);
+    if (targetProject) {
+      targetProject.activity_count = (targetProject.activity_count || 0) + 1;
+      
+      // Inline push tracking state to project registry to keep counters accurate
+      if (!targetProject.logged_dates.includes(selectedDateStr)) {
+        targetProject.logged_dates.push(selectedDateStr);
+      }
+      saveLocal('msilas-projects', allProjects);
+      renderProjectSection();
+
+      // Fire atomic background increment synchronization updates directly into Supabase
+      try {
+        await sb.from('projects')
+          .update({ 
+            activity_count: targetProject.activity_count,
+            logged_dates: targetProject.logged_dates
+          })
+          .eq('id', currentSelectedProjectId);
+      } catch (err) {
+        console.error("Project performance metric sync failed:", err);
+      }
+    }
+  }
+
+  // CLOUD SYNCHRONIZATION LOGIC FOR REALTIME ENGINE
+  document.getElementById('syncDot').className = 'sync-dot yellow';
+  document.getElementById('syncText').textContent = 'Syncing...';
+
+  try {
+    const currentDayEntries = allLogs[selectedDateStr];
+    const { error } = await sb.from('activity_logs').upsert({
+      user_id: USER_ID,
+      date: selectedDateStr,
+      entries: currentDayEntries
+    }, { onConflict: 'user_id,date' });
+
+    if(error) throw error;
+    document.getElementById('syncDot').className = 'sync-dot green';
+    document.getElementById('syncText').textContent = 'Live Synced to Cloud DB';
+  } catch(e) {
+    console.error("Database upsert pipeline error:", e);
+    document.getElementById('syncDot').className = 'sync-dot red';
+    document.getElementById('syncText').textContent = 'Local Engine Buffer';
+  }
+
+  clearMetaSelection();
+}
+
+// LOG REMOVAL ROUTINE
+async function deleteLogEntry(entryId) {
+  if(!allLogs[selectedDateStr]) return;
+  
+  allLogs[selectedDateStr] = allLogs[selectedDateStr].filter(e => e.id !== entryId);
+  saveLocal('msilas-logs', allLogs);
+  renderLogs();
+
+  document.getElementById('syncDot').className = 'sync-dot yellow';
+  try {
+    const { error } = await sb.from('activity_logs').upsert({
+      user_id: USER_ID,
+      date: selectedDateStr,
+      entries: allLogs[selectedDateStr]
+    }, { onConflict: 'user_id,date' });
+    
+    if(error) throw error;
+    document.getElementById('syncDot').className = 'sync-dot green';
+    document.getElementById('syncText').textContent = 'Live Synced to Cloud DB';
+  } catch(e) {
+    document.getElementById('syncDot').className = 'sync-dot red';
+    document.getElementById('syncText').textContent = 'Local Engine Buffer';
+  }
+}
+
+// RENDERING ACTIVE LOG VIEWPORTS
+function renderLogs() {
+  const container = document.getElementById('logsList');
+  container.innerHTML = '';
+
+  const dayEntries = allLogs[selectedDateStr] || [];
+  if(dayEntries.length === 0) {
+    container.innerHTML = `<div style="font-size:14px; color:var(--muted); font-style:italic; padding:12px 0;">No operational targets saved for ${selectedDateStr}.</div>`;
+    return;
+  }
+
+  dayEntries.forEach(e => {
+    const item = document.createElement('div');
+    item.className = 'log-item';
+
+    // Parse tag identifiers dynamically matching cached core configurations
+    let tagsHtml = '';
+    if (e.project_id) {
+      const matchProj = allProjects.find(p => p.id === e.project_id);
+      if (matchProj) tagsHtml += `<span class="tag tag-project">📁 Project: ${matchProj.name}</span>`;
+    }
+    if (e.skill_id) {
+      const matchSkill = allSkills.find(s => s.id === e.skill_id);
+      if (matchSkill) tagsHtml += `<span class="tag tag-skill">⚡ Skill: ${matchSkill.name}</span>`;
+    }
+    if (e.category_key && customCats[e.category_key]) {
+      const cat = customCats[e.category_key];
+      tagsHtml += `<span class="tag tag-cat">${cat.icon || '🏷️'} ${cat.label}</span>`;
+    }
+
+    item.innerHTML = `
+      <div class="log-item-header">
+        <span class="log-time">[${e.time || '00:00'}]</span>
+        <button class="btn-delete-log" onclick="deleteLogEntry('${e.id}')">Delete</button>
+      </div>
+      <div class="log-text">${e.text}</div>
+      <div class="log-tags">${tagsHtml}</div>
+    `;
+    container.appendChild(item);
+  });
+}
+
+// PROJECT INCEPTION MODULE
+async function createProject() {
+  const nameEl = document.getElementById('projName');
+  const descEl = document.getElementById('projDesc');
+  const catEl = document.getElementById('projCat');
+  const skillEl = document.getElementById('projSkill');
+
+  const name = nameEl.value.trim();
+  if(!name) return;
+
+  const newProj = {
+    id: 'proj_' + Date.now(),
+    user_id: USER_ID,
+    name: name,
+    description: descEl.value.trim(),
+    status: 'ongoing',
+    related_category: catEl.value || '',
+    related_skill_id: skillEl.value || null,
+    logged_dates: [],
+    activity_count: 0,
+    created_at: new Date().toISOString(),
+    completed_at: null
+  };
+
+  allProjects.push(newProj);
+  saveLocal('msilas-projects', allProjects);
+  renderProjectSection();
+
+  nameEl.value = '';
+  descEl.value = '';
+
+  try {
+    await sb.from('projects').insert([newProj]);
+  } catch(err) {
+    console.error("Cloud project creation failed:", err);
+  }
+}
+
+// TOGGLE PROJECT STATUS & PRECISE RECORDING OF STRUCTURAL COMPLETION DATE
+async function toggleProjectComplete(projId, isComplete) {
+  const proj = allProjects.find(p => p.id === projId);
+  if(!proj) return;
+
+  proj.status = isComplete ? 'completed' : 'ongoing';
+  // CRITICAL REQUIREMENT: Safely record precision execution completion date parameters to completed_at column
+  proj.completed_at = isComplete ? new Date().toISOString() : null;
+
+  saveLocal('msilas-projects', allProjects);
+  renderProjectSection();
+
+  try {
+    await sb.from('projects')
+      .update({ 
+        status: proj.status, 
+        completed_at: proj.completed_at 
+      })
+      .eq('id', projId);
+  } catch(e) {
+    console.error("Project completion sync status updating error:", e);
+  }
+}
+
+// DELETE PROJECT FROM DATABASE
+async function deleteProject(projId) {
+  if(!confirm("Are you sure you want to completely remove this project profile?")) return;
+  allProjects = allProjects.filter(p => p.id !== projId);
+  saveLocal('msilas-projects', allProjects);
+  renderProjectSection();
+
+  try {
+    await sb.from('projects').delete().eq('id', projId);
+  } catch(e) {
+    console.error("Project removal failure:", e);
+  }
+}
+
+// RENDER PROJECT LAYOUT ENGINES
+function renderProjectSection() {
+  const container = document.getElementById('projectContainer');
+  container.innerHTML = '';
+
+  if(allProjects.length === 0) {
+    container.innerHTML = `<div style="font-size:14px; color:var(--muted); font-style:italic;">No custom projects deployed.</div>`;
+    return;
+  }
+
+  allProjects.forEach(p => {
+    const item = document.createElement('div');
+    item.className = 'project-item';
+    
+    const isDone = p.status === 'completed';
+    const catDetails = customCats[p.related_category] ? `${customCats[p.related_category].icon || '🏷️'} ${customCats[p.related_category].label}` : 'None';
+    
+    let skillDetails = 'None';
+    if (p.related_skill_id) {
+      const targetSkill = allSkills.find(s => s.id === p.related_skill_id);
+      if (targetSkill) skillDetails = `⚡ ${targetSkill.name}`;
+    }
+
+    let completionMetaHtml = '';
+    if (p.completed_at) {
+      const readableDate = new Date(p.completed_at).toLocaleDateString();
+      completionMetaHtml = `<div style="color:#af4c4c; font-size:11px;">Completed On: <strong>${readableDate}</strong></div>`;
+    }
+
+    item.innerHTML = `
+      <div class="project-top">
+        <div>
+          <span class="project-title">${p.name}</span>
+          <span class="status-badge ${p.status}">${p.status}</span>
+        </div>
+        <span class="project-count-badge">Logs Count: ${p.activity_count || 0}</span>
+      </div>
+      <div class="project-desc">${p.description || 'No execution descriptions attached.'}</div>
+      <div class="project-meta">
+        <span>Category: <strong>${catDetails}</strong></span>
+        <span>Skill Context: <strong>${skillDetails}</strong></span>
+      </div>
+      ${completionMetaHtml}
+      <div class="project-actions">
+        <label class="chk-label">
+          <input type="checkbox" ${isDone ? 'checked' : ''} onchange="toggleProjectComplete('${p.id}', this.checked)">
+          Mark as Project Complete
+        </label>
+        <button class="btn-delete-log" onclick="deleteProject('${p.id}')" style="font-size:11px;">Remove Profile</button>
+      </div>
+    `;
+    container.appendChild(item);
+  });
+}
+
+// SKILLS REGISTRY COMPONENT LAYER
+async function createSkill() {
+  const input = document.getElementById('skillName');
+  const val = input.value.trim();
+  if(!val) return;
+
+  const newSkill = {
+    id: 'skill_' + Date.now(),
+    user_id: USER_ID,
+    name: val,
+    created_at: new Date().toISOString()
+  };
+
+  allSkills.push(newSkill);
+  saveLocal('msilas-skills', allSkills);
+  renderSkillsSection();
+  populateSelects();
+  input.value = '';
+
+  try {
+    await sb.from('skills').insert([newSkill]);
+  } catch(e) {
+    console.error("Skill integration pipeline failed:", e);
+  }
+}
+
+async function deleteSkill(skillId) {
+  allSkills = allSkills.filter(s => s.id !== skillId);
+  saveLocal('msilas-skills', allSkills);
+  renderSkillsSection();
+  populateSelects();
+
+  try {
+    await sb.from('skills').delete().eq('id', skillId);
+  } catch(e) {
+    console.error("Skill purging failed:", e);
+  }
+}
+
+function renderSkillsSection() {
+  const container = document.getElementById('skillsContainer');
+  container.innerHTML = '';
+
+  if(allSkills.length === 0) {
+    container.innerHTML = `<div style="font-size:13px; color:var(--muted); font-style:italic;">No specific execution skills configured.</div>`;
+    return;
+  }
+
+  allSkills.forEach(s => {
+    const row = document.createElement('div');
+    row.className = 'list-row';
+    row.innerHTML = `
+      <div class="list-row-info"><span>⚡</span> <span>${s.name}</span></div>
+      <button class="btn-delete-log" onclick="deleteSkill('${s.id}')">Delete</button>
+    `;
+    container.appendChild(row);
+  });
+}
+
+// CONFIGURATION CATEGORY SYSTEM (100% DYNAMIC - NO HARDCODED DEFAULTS)
+async function createCategory() {
+  const keyEl = document.getElementById('catKey');
+  const labelEl = document.getElementById('catLabel');
+  const iconEl = document.getElementById('catIcon');
+
+  const key = keyEl.value.trim().toLowerCase();
+  const label = labelEl.value.trim();
+  const icon = iconEl.value.trim() || '🏷️';
+
+  if(!key || !label) return;
+
+  customCats[key] = { label: label, icon: icon };
+  saveLocal('msilas-cats', customCats);
+  
+  renderCatSection();
+  populateSelects();
+
+  keyEl.value = '';
+  labelEl.value = '';
+  iconEl.value = '';
+
+  try {
+    await sb.from('custom_categories').insert([{
+      user_id: USER_ID,
+      key: key,
+      label: label,
+      icon: icon
+    }]);
+  } catch(e) {
+    console.error('Dynamic category generation failed:', e);
+  }
+}
+
+async function deleteCategory(key) {
+  delete customCats[key];
+  saveLocal('msilas-cats', customCats);
+  
+  renderCatSection();
+  populateSelects();
+
+  try {
+    await sb.from('custom_categories').delete().eq('key', key).eq('user_id', USER_ID);
+  } catch(e) { 
+    console.error('Cat configuration delete transaction failed:', e); 
+  }
+}
+
+function renderCatSection() {
+  const container = document.getElementById('customCatsContainer');
+  container.innerHTML = '';
+
+  const keys = Object.keys(customCats);
+  if(keys.length === 0) {
+    container.innerHTML = `<div style="font-size:13px; color:var(--muted); font-style:italic;">No dynamic operational categories configured in backend.</div>`;
+    return;
+  }
+
+  keys.forEach(k => {
+    const row = document.createElement('div');
+    row.className = 'list-row';
+    row.innerHTML = `
+      <div class="list-row-info">
+        <span>${customCats[k].icon || '🏷️'}</span>
+        <span><strong>${customCats[k].label}</strong> <small style="color:var(--muted)">(${k})</small></span>
+      </div>
+      <button class="btn-delete-log" onclick="deleteCategory('${k}')">Delete</button>
+    `;
+    container.appendChild(row);
+  });
+}
+
+// FORM SELECT RE-POPULATION PIPELINES
+function populateSelects() {
+  const projCatSelect = document.getElementById('projCat');
+  const projSkillSelect = document.getElementById('projSkill');
+
+  if(projCatSelect) {
+    projCatSelect.innerHTML = '<option value="">-- No Cascaded Category --</option>';
+    Object.keys(customCats).forEach(k => {
+      projCatSelect.innerHTML += `<option value="${k}">${customCats[k].icon} ${customCats[k].label}</option>`;
+    });
+  }
+
+  if(projSkillSelect) {
+    projSkillSelect.innerHTML = '<option value="">-- No Cascaded Skill --</option>';
+    allSkills.forEach(s => {
+      projSkillSelect.innerHTML += `<option value="${s.id}">⚡ ${s.name}</option>`;
+    });
+  }
+}
+
+// EXECUTE CORE ORCHESTRATION PIPELINE
+window.onload = init;
 </script>
+
 </body>
 </html>
