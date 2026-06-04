@@ -416,20 +416,6 @@ async function syncToSupabase(table, payload, conflictCol) {
   }
 }
 
-// FIX: Target 'productivity_ai' master row mapping correctly
-async function syncToAiProductivityTable() {
-  const masterPayload = {
-    user_id: USER_ID,
-    activity_logs: allLogs,
-    custom_categories: customCats,
-    projects: allProjects,
-    skills: allSkills,
-    skill_connections: allConnections,
-    updated_at: new Date().toISOString()
-  };
-  await syncToSupabase('productivity_ai', masterPayload, 'user_id');
-}
-
 // ── Default Categories & Mind Map Objects ────────────────────
 const HABITS_DEFAULT = {
   writing:      { label:"Writing / Editing",   icon:"✍️" },
@@ -816,7 +802,6 @@ function addEntry() {
   renderProjects(); // Refresh counts
 
   syncToSupabase('activity_logs', { user_id: USER_ID, date: today, entries: allLogs[today], updated_at: new Date().toISOString() }, 'user_id,date');
-  syncToAiProductivityTable();
 }
 
 function autoTrackProjects(category, date, mappedProjId) {
@@ -866,7 +851,6 @@ function autoTrackProjects(category, date, mappedProjId) {
       };
       syncToSupabase('projects', safePayload, 'id');
     });
-    syncToAiProductivityTable();
   }
 }
 
@@ -878,7 +862,6 @@ async function deleteEntry(i) {
     renderAll();
     renderProjects(); // Refresh entry counts dynamically
     await syncToSupabase('activity_logs', { user_id: USER_ID, date: today, entries: allLogs[today], updated_at: new Date().toISOString() }, 'user_id,date');
-    await syncToAiProductivityTable();
   }
 }
 
@@ -919,7 +902,6 @@ function saveEdit() {
   renderAll();
   autoTrackProjects(catVal, today, projVal);
   renderProjects(); // re-eval counts
-  syncToAiProductivityTable();
 }
 
 function openAddCatModal() {
@@ -952,7 +934,6 @@ function saveNewCategory() {
   closeModal('addCatModal');
   populateSelects();
   renderCatSection();
-  syncToAiProductivityTable();
 }
 
 function openProjectModal(id) {
@@ -1062,7 +1043,6 @@ async function saveProject() {
   editingProject = null;
   populateSelects(); // Re-populate incase name changed
   renderProjects();
-  await syncToAiProductivityTable();
 }
 
 async function handleDeleteProject(id) {
@@ -1072,7 +1052,6 @@ async function handleDeleteProject(id) {
   populateSelects();
   renderProjects();
   renderAll(); // Resets badges referencing this proj
-  await syncToAiProductivityTable();
 }
 
 function openModal(id)  { document.getElementById(id).classList.add('open'); }
@@ -1229,7 +1208,6 @@ function handleMapMouseUp() {
   
   saveLocal('msilas-skills', allSkills);
   draggedNode = null;
-  syncToAiProductivityTable();
   setTimeout(() => { hasDraggedSignificant = false; }, 50);
 }
 
@@ -1381,7 +1359,6 @@ async function updateSkill() {
   populateSelects(); // Resets skill menus
   buildMap();
   toggleSkill(null);
-  await syncToAiProductivityTable();
 }
 
 async function deleteCurrentSkill() {
@@ -1401,7 +1378,6 @@ async function deleteCurrentSkill() {
   populateSelects();
   buildMap();
   toggleSkill(null);
-  await syncToAiProductivityTable();
 }
 
 function openAddSkillModal() {
@@ -1451,7 +1427,6 @@ async function saveSkill() {
   populateSelects();
   buildMap();
   toggleSkill(null);
-  await syncToAiProductivityTable();
 }
 
 // ── Dashboard Lifecycle Initialization ──────────────────────────────
