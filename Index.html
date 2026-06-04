@@ -1010,8 +1010,9 @@ async function saveProject() {
   } else {
     if (status === 'completed') completed_at = new Date().toISOString();
     
+    // CHANGED: Generating proper UUID format to fix '22P02'
     const newProj = { 
-      id: 'proj_' + Date.now(), 
+      id: crypto.randomUUID(), 
       name, description, status, related_categories, related_skills, 
       position: 0, completed_at, logged_dates: [], created_at: new Date().toISOString() 
     };
