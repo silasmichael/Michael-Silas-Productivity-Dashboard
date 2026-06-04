@@ -277,7 +277,7 @@
     <label class="modal-label">Linked to Category (auto-tracks days)</label>
     <select class="modal-select" id="projCategory"></select>
     
-    <!-- CHANGED: Multiple skills checkbox container -->
+    <!-- Multiple skills checkbox container -->
     <label class="modal-label">Related Skills (optional)</label>
     <div id="projSkillsContainer" style="background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:12px;margin-bottom:14px;max-height:160px;overflow-y:auto;"></div>
     
@@ -416,7 +416,7 @@ async function syncToSupabase(table, payload, conflictCol) {
   }
 }
 
-// Global composite saving payload builder for Master AI Table sync
+// FIX: Target 'productivity_ai' master row mapping correctly
 async function syncToAiProductivityTable() {
   const masterPayload = {
     user_id: USER_ID,
@@ -427,7 +427,7 @@ async function syncToAiProductivityTable() {
     skill_connections: allConnections,
     updated_at: new Date().toISOString()
   };
-  await syncToSupabase('productivity_ai_master', masterPayload, 'user_id');
+  await syncToSupabase('productivity_ai', masterPayload, 'user_id');
 }
 
 // ── Default Categories & Mind Map Objects ────────────────────
@@ -560,7 +560,6 @@ function populateSelects() {
 
   const src = allSkills.length > 0 ? allSkills : SKILLS_DEFAULT;
   const skillOpts = `<option value="">— None —</option>` + src.map(s => `<option value="${s.id||s.key}">${s.label}</option>`).join('');
-  // Note: projSkill is removed and replaced by multiple checkbox container, so it'll skip it safely.
   ['modalSkill'].forEach(id => {
     const el = document.getElementById(id); if (!el) return;
     const cur = el.value; el.innerHTML = skillOpts; if (cur) el.value = cur;
