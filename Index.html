@@ -257,7 +257,7 @@
 </div>
 
 <div class="modal-overlay" id="projectModal">
-  <div class="modal">
+  <div class="modal" style="max-height: 90vh; overflow-y: auto;">
     <div class="modal-title" id="projModalTitle">New Project</div>
     <label class="modal-label">Project name</label>
     <input type="text" class="modal-input" id="projName" placeholder="e.g. Babel Animation, Unanswered Book...">
@@ -265,8 +265,12 @@
     <input type="text" class="modal-input" id="projDesc" placeholder="What is this about?">
     <label class="modal-label">Linked to Category (auto-tracks days)</label>
     <select class="modal-select" id="projCategory"></select>
-    <label class="modal-label">Related Skill (optional)</label>
-    <select class="modal-select" id="projSkill"><option value="">— None —</option></select>
+    
+    <label class="modal-label">Related Skills (optional)</label>
+    <div id="projSkillsContainer" style="background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:12px;margin-bottom:14px;max-height:140px;overflow-y:auto;">
+      <!-- Dynamic list of skills with checkboxes -->
+    </div>
+
     <label class="modal-label">Status</label>
     <select class="modal-select" id="projStatus">
       <option value="active">🟢 Active</option>
@@ -531,7 +535,7 @@ function populateSelects() {
 
   const src = allSkills.length > 0 ? allSkills : SKILLS_DEFAULT;
   const skillOpts = `<option value="">— None —</option>` + src.map(s => `<option value="${s.id||s.key}">${s.label}</option>`).join('');
-  ['modalSkill', 'projSkill'].forEach(id => {
+  ['modalSkill'].forEach(id => {
     const el = document.getElementById(id); if (!el) return;
     const cur = el.value; el.innerHTML = skillOpts; if (cur) el.value = cur;
   });
@@ -818,14 +822,15 @@ function autoTrackProjects(category, date, mappedProjId) {
     saveLocal('msilas-projs', allProjects);
     
     updatedProjects.forEach(p => {
-      // Create a rigorously clean payload to avoid any Supabase column type rejections
+      // Create a rigorously clean payload adhering to the exact DB schema to avoid any column errors
       const safePayload = {
         id: p.id,
         user_id: USER_ID,
         name: p.name,
         description: p.description || '',
         status: p.status,
-        related_category: p.related_category || '',
+        position: p.position !== undefined ? p.position : 0,
+        related_categories: p.related_category ? [p.related_category] : [],
         related_skills: Array.isArray(p.related_skills) ? p.related_skills : [],
         logged_dates: Array.isArray(p.logged_dates) ? p.logged_dates : [],
         completed_at: p.completed_at || null,
@@ -926,6 +931,11 @@ function openProjectModal(id) {
   editingProject = id ? id : null;
   populateSelects();
   document.getElementById('projModalTitle').textContent = id ? 'Edit Project' : 'New Project';
+  
+  const skillSrc = allSkills.length > 0 ? allSkills : SKILLS_DEFAULT;
+  const skillsContainer = document.getElementById('projSkillsContainer');
+  let checkedSkills = [];
+
   if (id) {
     const p = allProjects.find(item => item.id === id);
     if (p) {
@@ -933,15 +943,27 @@ function openProjectModal(id) {
       document.getElementById('projDesc').value = p.description || '';
       document.getElementById('projStatus').value = p.status || 'active';
       document.getElementById('projCategory').value = p.related_category || '';
-      document.getElementById('projSkill').value = (p.related_skills && p.related_skills.length > 0) ? p.related_skills[0] : '';
+      checkedSkills = Array.isArray(p.related_skills) ? p.related_skills : [];
     }
   } else {
     document.getElementById('projName').value = '';
     document.getElementById('projDesc').value = '';
     document.getElementById('projStatus').value = 'active';
     document.getElementById('projCategory').value = '';
-    document.getElementById('projSkill').value = '';
   }
+
+  // Dynamically populate skills with interactive checklist format
+  skillsContainer.innerHTML = skillSrc.map(s => {
+    const sid = s.id || s.key;
+    const isChecked = checkedSkills.includes(sid) ? 'checked' : '';
+    return `
+      <div style="display:flex; align-items:center; gap:8px; padding:4px 0;">
+        <input type="checkbox" class="skill-conn-check" id="proj_skill_${sid}" value="${sid}" ${isChecked} style="cursor:pointer; width:15px; height:15px; accent-color:var(--gold);">
+        <label for="proj_skill_${sid}" style="font-size:12px; color:var(--text); cursor:pointer; font-family:'Lora',serif;">${s.label}</label>
+      </div>
+    `;
+  }).join('');
+
   openModal('projectModal');
   setTimeout(() => document.getElementById('projName').focus(), 100);
 }
@@ -951,25 +973,25 @@ async function saveProject() {
   if (!name) { document.getElementById('projName').focus(); return; }
   const status = document.getElementById('projStatus').value;
   const description = document.getElementById('projDesc').value.trim();
-  
   const related_category = document.getElementById('projCategory').value;
-  const related_skill = document.getElementById('projSkill').value;
-  // Rigorously enforce a clean Array of strings mapping for text[]
-  const related_skills = related_skill ? [String(related_skill)] : [];
+  
+  // Gather all multi-selected skills from our interactive checklist
+  const selectedSkills = [];
+  document.querySelectorAll('#projSkillsContainer .skill-conn-check:checked').forEach(cb => {
+    selectedSkills.push(cb.value);
+  });
   
   let completed_at = null;
-  
   let projToSync;
 
   if (editingProject) {
     const existingP = allProjects.find(p => p.id === editingProject);
-    // Stamp completion date if just moved to completed
     if (status === 'completed') {
        completed_at = existingP.completed_at || new Date().toISOString();
     }
     
     allProjects = allProjects.map(p => p.id === editingProject 
-      ? { ...p, name, description, status, related_category, related_skills, completed_at } 
+      ? { ...p, name, description, status, related_category, related_skills: selectedSkills, completed_at } 
       : p);
     projToSync = allProjects.find(p => p.id === editingProject);
   } else {
@@ -977,8 +999,8 @@ async function saveProject() {
     
     const newProj = { 
       id: 'proj_' + Date.now(), 
-      name, description, status, related_category, related_skills, 
-      completed_at, logged_dates: [], created_at: new Date().toISOString() 
+      name, description, status, related_category, related_skills: selectedSkills, 
+      completed_at, logged_dates: [], created_at: new Date().toISOString(), position: 0 
     };
     allProjects.push(newProj);
     projToSync = newProj;
@@ -987,14 +1009,15 @@ async function saveProject() {
   saveLocal('msilas-projs', allProjects);
   
   if (projToSync) {
-    // Construct exactly matching payload ensuring no undefined elements crash Postgres driver
+    // Construct exactly matching database payload mapping to your schema structure perfectly
     const syncPayload = {
       id: projToSync.id,
       user_id: USER_ID, 
       name: projToSync.name,
       description: projToSync.description || '',
       status: projToSync.status,
-      related_category: projToSync.related_category || '',
+      position: projToSync.position !== undefined ? projToSync.position : 0,
+      related_categories: projToSync.related_category ? [projToSync.related_category] : [],
       related_skills: Array.isArray(projToSync.related_skills) ? projToSync.related_skills : [],
       logged_dates: Array.isArray(projToSync.logged_dates) ? projToSync.logged_dates : [],
       completed_at: projToSync.completed_at || null,
@@ -1005,7 +1028,7 @@ async function saveProject() {
 
   closeModal('projectModal');
   editingProject = null;
-  populateSelects(); // Re-populate incase name changed
+  populateSelects(); // Re-populate incase names changed
   renderProjects();
   await syncToAiProductivityTable();
 }
@@ -1510,7 +1533,7 @@ async function init() {
       allProjects = projData.map(p => ({ 
         ...p, 
         description: p.description || '', 
-        related_category: p.related_category || '',
+        related_category: (p.related_categories && p.related_categories.length > 0) ? p.related_categories[0] : (p.related_category || ''),
         related_skills: p.related_skills || [],
         logged_dates: p.logged_dates || [],
         completed_at: p.completed_at || null
