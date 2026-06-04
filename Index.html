@@ -126,7 +126,7 @@
   .emoji-opt { font-size:20px; cursor:pointer; padding:4px; border-radius:6px; transition:background 0.15s; }
   .emoji-opt:hover,.emoji-opt.selected { background:#2a2a2a; }
 
-  .sync-badge { position:fixed; bottom:16px; right:16px; background:var(--bg2); border:1px solid var(--border); border-radius:20px; padding:6px 12px; font-size:10px; color:#444; letter-spacing:1px; text-transform:uppercase; z-index:50; display:flex; align-items:center; gap:6px; }
+  .sync-badge { position:fixed; bottom:16px; right:16px; background:var(--bg2); border:1px solid var(--border); border-radius:20px; padding:6px 12px; font-size:10px; color:#444; letter-spacing:1px; text-transform:uppercase; z-index:50; display:flex; align-items:center; gap:6px; cursor:help; }
   .sync-dot { width:6px; height:6px; border-radius:50%; background:#444; transition:background 0.3s; }
   .sync-dot.green { background:var(--green); }
   .sync-dot.yellow { background:#886633; animation:pulse 1.2s infinite; }
@@ -172,7 +172,8 @@
 
 <div id="textMeasureHelper"></div>
 
-<div class="sync-badge" id="syncBadge">
+<!-- Added a tooltip title to the sync badge for robust error handling viewing -->
+<div class="sync-badge" id="syncBadge" title="All changes saved to cloud">
   <div class="sync-dot" id="syncDot"></div>
   <span id="syncText">Local</span>
 </div>
@@ -354,8 +355,16 @@ function getUserId() { return 'user_qd4ygkkif3mprjgv9j'; }
 const USER_ID = getUserId();
 
 function setSyncing() { document.getElementById('syncDot').className = 'sync-dot yellow'; document.getElementById('syncText').textContent = 'Saving...'; }
-function setSynced()  { document.getElementById('syncDot').className = 'sync-dot green'; document.getElementById('syncText').textContent = 'Synced'; }
-function setOffline() { document.getElementById('syncDot').className = 'sync-dot red'; document.getElementById('syncText').textContent = 'Offline'; }
+function setSynced()  { 
+  document.getElementById('syncDot').className = 'sync-dot green'; 
+  document.getElementById('syncText').textContent = 'Synced'; 
+  document.getElementById('syncBadge').title = "All changes saved to cloud";
+}
+function setOffline(msg) { 
+  document.getElementById('syncDot').className = 'sync-dot red'; 
+  document.getElementById('syncText').textContent = 'Error (Hover)'; 
+  document.getElementById('syncBadge').title = msg || 'Database rejected the data format.';
+}
 
 function saveLocal(key, data) { localStorage.setItem(key, JSON.stringify(data)); }
 
@@ -364,12 +373,16 @@ async function syncToSupabase(table, payload, conflictCol) {
   try {
     const options = conflictCol ? { onConflict: conflictCol } : {};
     const { error } = await sb.from(table).upsert(payload, options);
-    if (error) throw error;
+    if (error) {
+      console.error(`Supabase error pushing to ${table}:`, error);
+      setOffline(error.message || error.details || "Database Sync Failed");
+      return false;
+    }
     setSynced();
     return true;
   } catch(e) {
-    console.error("Sync breakdown in table " + table + ":", e);
-    setOffline();
+    console.error("Network/Sync breakdown in table " + table + ":", e);
+    setOffline(e.message || "Network Error");
     return false;
   }
 }
@@ -805,18 +818,20 @@ function autoTrackProjects(category, date, mappedProjId) {
     saveLocal('msilas-projs', allProjects);
     
     updatedProjects.forEach(p => {
-      syncToSupabase('projects', {
+      // Create a rigorously clean payload to avoid any Supabase column type rejections
+      const safePayload = {
         id: p.id,
         user_id: USER_ID,
         name: p.name,
         description: p.description || '',
         status: p.status,
         related_category: p.related_category || '',
-        related_skills: p.related_skills || [],
-        logged_dates: p.logged_dates,
+        related_skills: Array.isArray(p.related_skills) ? p.related_skills : [],
+        logged_dates: Array.isArray(p.logged_dates) ? p.logged_dates : [],
         completed_at: p.completed_at || null,
         created_at: p.created_at
-      }, 'id');
+      };
+      syncToSupabase('projects', safePayload, 'id');
     });
     syncToAiProductivityTable();
   }
@@ -939,7 +954,8 @@ async function saveProject() {
   
   const related_category = document.getElementById('projCategory').value;
   const related_skill = document.getElementById('projSkill').value;
-  const related_skills = related_skill ? [related_skill] : [];
+  // Rigorously enforce a clean Array of strings mapping for text[]
+  const related_skills = related_skill ? [String(related_skill)] : [];
   
   let completed_at = null;
   
@@ -971,18 +987,20 @@ async function saveProject() {
   saveLocal('msilas-projs', allProjects);
   
   if (projToSync) {
-    await syncToSupabase('projects', { 
+    // Construct exactly matching payload ensuring no undefined elements crash Postgres driver
+    const syncPayload = {
       id: projToSync.id,
       user_id: USER_ID, 
       name: projToSync.name,
       description: projToSync.description || '',
       status: projToSync.status,
       related_category: projToSync.related_category || '',
-      related_skills: projToSync.related_skills || [],
-      logged_dates: projToSync.logged_dates || [],
+      related_skills: Array.isArray(projToSync.related_skills) ? projToSync.related_skills : [],
+      logged_dates: Array.isArray(projToSync.logged_dates) ? projToSync.logged_dates : [],
       completed_at: projToSync.completed_at || null,
       created_at: projToSync.created_at
-    }, 'id');
+    };
+    await syncToSupabase('projects', syncPayload, 'id');
   }
 
   closeModal('projectModal');
@@ -1503,7 +1521,7 @@ async function init() {
     setSynced();
   } catch(e) {
     console.error("Initialization pipeline failure:", e);
-    setOffline();
+    setOffline(e.message || "Initialization Error");
   }
 
   buildMap();
