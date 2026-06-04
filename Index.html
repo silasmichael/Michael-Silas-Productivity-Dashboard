@@ -126,7 +126,7 @@
   .emoji-opt { font-size:20px; cursor:pointer; padding:4px; border-radius:6px; transition:background 0.15s; }
   .emoji-opt:hover,.emoji-opt.selected { background:#2a2a2a; }
 
-  .sync-badge { position:fixed; bottom:16px; right:16px; background:var(--bg2); border:1px solid var(--border); border-radius:20px; padding:6px 12px; font-size:10px; color:#444; letter-spacing:1px; text-transform:uppercase; z-index:50; display:flex; align-items:center; gap:6px; cursor:help; }
+  .sync-badge { position:fixed; bottom:16px; right:16px; background:var(--bg2); border:1px solid var(--border); border-radius:20px; padding:6px 12px; font-size:10px; color:#444; letter-spacing:1px; text-transform:uppercase; z-index:50; display:flex; align-items:center; gap:6px; cursor:pointer; }
   .sync-dot { width:6px; height:6px; border-radius:50%; background:#444; transition:background 0.3s; }
   .sync-dot.green { background:var(--green); }
   .sync-dot.yellow { background:#886633; animation:pulse 1.2s infinite; }
@@ -136,7 +136,7 @@
   .skill-conn-item { display:flex; align-items:flex-start; gap:10px; padding:8px 0; border-bottom:1px solid var(--border); }
   .skill-conn-item:last-child { border-bottom:none; }
   .skill-conn-check { width:16px; height:16px; accent-color:var(--gold); flex-shrink:0; margin-top:2px; cursor:pointer; }
-  .skill-conn-label { font-size:13px; color:var(--text); flex:1; }
+  .skill-conn-label { font-size:13px; color:var(--text); flex:1; cursor:pointer; }
   .skill-conn-desc { width:100%; background:var(--bg); border:1px solid var(--border); border-radius:4px; padding:5px 8px; color:var(--text); font-size:11px; font-family:'Lora',serif; outline:none; margin-top:4px; display:none; }
   .skill-conn-desc.show { display:block; }
   .skill-conn-desc:focus { border-color:var(--gold); }
@@ -172,10 +172,21 @@
 
 <div id="textMeasureHelper"></div>
 
-<!-- Added a tooltip title to the sync badge for robust error handling viewing -->
-<div class="sync-badge" id="syncBadge" title="All changes saved to cloud">
+<!-- SYNC BADGE WITH ERROR CLICK -->
+<div class="sync-badge" id="syncBadge" title="All changes saved to cloud" onclick="showSyncError()">
   <div class="sync-dot" id="syncDot"></div>
   <span id="syncText">Local</span>
+</div>
+
+<!-- ERROR MODAL -->
+<div class="modal-overlay" id="errorModal">
+  <div class="modal">
+    <div class="modal-title" style="color:#ffaaaa;">Sync Notification</div>
+    <div id="errorMessage" style="font-size:13px;color:var(--text);margin-bottom:20px;word-break:break-word;background:#1a1a1a;padding:12px;border-radius:8px;border:1px solid var(--border);max-height:200px;overflow-y:auto;font-family:monospace;"></div>
+    <div class="modal-btns">
+      <button class="modal-cancel" style="width:100%" onclick="closeModal('errorModal')">Close</button>
+    </div>
+  </div>
 </div>
 
 <!-- ENTRY PICKER MODAL -->
@@ -257,7 +268,7 @@
 </div>
 
 <div class="modal-overlay" id="projectModal">
-  <div class="modal" style="max-height: 90vh; overflow-y: auto;">
+  <div class="modal" style="max-height: 85vh; overflow-y: auto;">
     <div class="modal-title" id="projModalTitle">New Project</div>
     <label class="modal-label">Project name</label>
     <input type="text" class="modal-input" id="projName" placeholder="e.g. Babel Animation, Unanswered Book...">
@@ -266,11 +277,10 @@
     <label class="modal-label">Linked to Category (auto-tracks days)</label>
     <select class="modal-select" id="projCategory"></select>
     
+    <!-- CHANGED: Multiple skills checkbox container -->
     <label class="modal-label">Related Skills (optional)</label>
-    <div id="projSkillsContainer" style="background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:12px;margin-bottom:14px;max-height:140px;overflow-y:auto;">
-      <!-- Dynamic list of skills with checkboxes -->
-    </div>
-
+    <div id="projSkillsContainer" style="background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:12px;margin-bottom:14px;max-height:160px;overflow-y:auto;"></div>
+    
     <label class="modal-label">Status</label>
     <select class="modal-select" id="projStatus">
       <option value="active">🟢 Active</option>
@@ -357,17 +367,32 @@ const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY, {
 
 function getUserId() { return 'user_qd4ygkkif3mprjgv9j'; }
 const USER_ID = getUserId();
+let lastSyncError = null;
+
+function showSyncError() {
+  if (lastSyncError) {
+    let text = typeof lastSyncError === 'string' ? lastSyncError : JSON.stringify(lastSyncError, null, 2);
+    document.getElementById('errorMessage').textContent = text;
+    openModal('errorModal');
+  } else {
+    document.getElementById('errorMessage').textContent = "No recent errors. Everything is synced up!";
+    openModal('errorModal');
+  }
+}
 
 function setSyncing() { document.getElementById('syncDot').className = 'sync-dot yellow'; document.getElementById('syncText').textContent = 'Saving...'; }
 function setSynced()  { 
   document.getElementById('syncDot').className = 'sync-dot green'; 
   document.getElementById('syncText').textContent = 'Synced'; 
   document.getElementById('syncBadge').title = "All changes saved to cloud";
+  lastSyncError = null;
 }
-function setOffline(msg) { 
+function setOffline(err) {
+  lastSyncError = err;
+  let msg = typeof err === 'object' ? (err.message || err.details || "Database Sync Failed") : err;
   document.getElementById('syncDot').className = 'sync-dot red'; 
-  document.getElementById('syncText').textContent = 'Error (Hover)'; 
-  document.getElementById('syncBadge').title = msg || 'Database rejected the data format.';
+  document.getElementById('syncText').textContent = 'Error (Click)'; 
+  document.getElementById('syncBadge').title = "Click to view error";
 }
 
 function saveLocal(key, data) { localStorage.setItem(key, JSON.stringify(data)); }
@@ -379,14 +404,14 @@ async function syncToSupabase(table, payload, conflictCol) {
     const { error } = await sb.from(table).upsert(payload, options);
     if (error) {
       console.error(`Supabase error pushing to ${table}:`, error);
-      setOffline(error.message || error.details || "Database Sync Failed");
+      setOffline(error);
       return false;
     }
     setSynced();
     return true;
   } catch(e) {
     console.error("Network/Sync breakdown in table " + table + ":", e);
-    setOffline(e.message || "Network Error");
+    setOffline(e);
     return false;
   }
 }
@@ -535,6 +560,7 @@ function populateSelects() {
 
   const src = allSkills.length > 0 ? allSkills : SKILLS_DEFAULT;
   const skillOpts = `<option value="">— None —</option>` + src.map(s => `<option value="${s.id||s.key}">${s.label}</option>`).join('');
+  // Note: projSkill is removed and replaced by multiple checkbox container, so it'll skip it safely.
   ['modalSkill'].forEach(id => {
     const el = document.getElementById(id); if (!el) return;
     const cur = el.value; el.innerHTML = skillOpts; if (cur) el.value = cur;
@@ -621,8 +647,11 @@ function buildProjectItem(p) {
   const dotColor = p.status === 'active' ? '#4a9a4a' : p.status === 'completed' ? '#4a7a9a' : '#886633';
   const statusLabel = p.status === 'active' ? '● Active' : p.status === 'completed' ? '✓ Completed' : '● Paused';
   const statusClass = p.status === 'active' ? 'status-active' : p.status === 'completed' ? 'status-completed' : 'status-paused';
-  const habit = allHabits()[p.related_category];
-  const catString = habit ? `${habit.icon} ${habit.label}` : p.related_category;
+  
+  // Resolve related categories safely
+  const pCats = p.related_categories && p.related_categories.length > 0 ? p.related_categories : (p.related_category ? [p.related_category] : []);
+  const habit = pCats.length > 0 ? allHabits()[pCats[0]] : null;
+  const catString = habit ? `${habit.icon} ${habit.label}` : (pCats.length > 0 ? pCats[0] : '');
   
   const daysCount = p.logged_dates ? p.logged_dates.length : 0;
   const entryCount = getProjectEntryCount(p.id);
@@ -636,7 +665,7 @@ function buildProjectItem(p) {
       ${p.description ? `<div class="proj-desc">${p.description}</div>` : ''}
       <div style="display:flex;align-items:center;gap:12px;margin-top:5px;flex-wrap:wrap;">
         <div class="proj-status ${statusClass}">${statusLabel}</div>
-        ${p.related_category ? `<div style="font-size:10px;color:#555;">${catString}</div>` : ''}
+        ${catString ? `<div style="font-size:10px;color:#555;">${catString}</div>` : ''}
         ${daysCount > 0 ? `<div style="font-size:10px;color:var(--gold);">📅 ${daysCount} day${daysCount !== 1 ? 's' : ''}</div>` : ''}
         ${entryCount > 0 ? `<div style="font-size:10px;color:var(--gold);">📝 ${entryCount} entr${entryCount !== 1 ? 'ies' : 'y'}</div>` : ''}
         ${p.completed_at ? `<div style="font-size:10px;color:var(--muted);">Completed: ${fmtDate(p.completed_at.split('T')[0])}</div>` : ''}
@@ -822,15 +851,15 @@ function autoTrackProjects(category, date, mappedProjId) {
     saveLocal('msilas-projs', allProjects);
     
     updatedProjects.forEach(p => {
-      // Create a rigorously clean payload adhering to the exact DB schema to avoid any column errors
+      // Create a rigorously clean payload to avoid any Supabase column type rejections
       const safePayload = {
         id: p.id,
         user_id: USER_ID,
         name: p.name,
         description: p.description || '',
         status: p.status,
-        position: p.position !== undefined ? p.position : 0,
-        related_categories: p.related_category ? [p.related_category] : [],
+        position: p.position || 0,
+        related_categories: Array.isArray(p.related_categories) ? p.related_categories : (p.related_category ? [p.related_category] : []),
         related_skills: Array.isArray(p.related_skills) ? p.related_skills : [],
         logged_dates: Array.isArray(p.logged_dates) ? p.logged_dates : [],
         completed_at: p.completed_at || null,
@@ -932,9 +961,24 @@ function openProjectModal(id) {
   populateSelects();
   document.getElementById('projModalTitle').textContent = id ? 'Edit Project' : 'New Project';
   
-  const skillSrc = allSkills.length > 0 ? allSkills : SKILLS_DEFAULT;
+  // Build Multiple Skills Checkboxes
+  const src = allSkills.length > 0 ? allSkills : SKILLS_DEFAULT;
   const skillsContainer = document.getElementById('projSkillsContainer');
-  let checkedSkills = [];
+  
+  let currentSkills = [];
+  if (id) {
+    const p = allProjects.find(item => item.id === id);
+    if (p) currentSkills = p.related_skills || [];
+  }
+  
+  skillsContainer.innerHTML = src.map(s => {
+    const sid = s.id || s.key;
+    const isChecked = currentSkills.includes(sid) ? 'checked' : '';
+    return `<div class="skill-conn-item" style="border:none; padding:4px 0;">
+      <input type="checkbox" class="skill-conn-check proj-skill-check" id="proj_skill_${sid}" value="${sid}" ${isChecked}>
+      <label class="skill-conn-label" for="proj_skill_${sid}">${s.label}</label>
+    </div>`;
+  }).join('');
 
   if (id) {
     const p = allProjects.find(item => item.id === id);
@@ -942,8 +986,8 @@ function openProjectModal(id) {
       document.getElementById('projName').value = p.name || '';
       document.getElementById('projDesc').value = p.description || '';
       document.getElementById('projStatus').value = p.status || 'active';
-      document.getElementById('projCategory').value = p.related_category || '';
-      checkedSkills = Array.isArray(p.related_skills) ? p.related_skills : [];
+      const pCats = p.related_categories && p.related_categories.length > 0 ? p.related_categories : (p.related_category ? [p.related_category] : []);
+      document.getElementById('projCategory').value = pCats.length > 0 ? pCats[0] : '';
     }
   } else {
     document.getElementById('projName').value = '';
@@ -951,19 +995,6 @@ function openProjectModal(id) {
     document.getElementById('projStatus').value = 'active';
     document.getElementById('projCategory').value = '';
   }
-
-  // Dynamically populate skills with interactive checklist format
-  skillsContainer.innerHTML = skillSrc.map(s => {
-    const sid = s.id || s.key;
-    const isChecked = checkedSkills.includes(sid) ? 'checked' : '';
-    return `
-      <div style="display:flex; align-items:center; gap:8px; padding:4px 0;">
-        <input type="checkbox" class="skill-conn-check" id="proj_skill_${sid}" value="${sid}" ${isChecked} style="cursor:pointer; width:15px; height:15px; accent-color:var(--gold);">
-        <label for="proj_skill_${sid}" style="font-size:12px; color:var(--text); cursor:pointer; font-family:'Lora',serif;">${s.label}</label>
-      </div>
-    `;
-  }).join('');
-
   openModal('projectModal');
   setTimeout(() => document.getElementById('projName').focus(), 100);
 }
@@ -973,25 +1004,27 @@ async function saveProject() {
   if (!name) { document.getElementById('projName').focus(); return; }
   const status = document.getElementById('projStatus').value;
   const description = document.getElementById('projDesc').value.trim();
-  const related_category = document.getElementById('projCategory').value;
   
-  // Gather all multi-selected skills from our interactive checklist
-  const selectedSkills = [];
-  document.querySelectorAll('#projSkillsContainer .skill-conn-check:checked').forEach(cb => {
-    selectedSkills.push(cb.value);
-  });
+  // Wrap the single select category into an array for database compatibility
+  const selectedCat = document.getElementById('projCategory').value;
+  const related_categories = selectedCat ? [selectedCat] : [];
+  
+  // Extract selected multiple skills from container
+  const checkedSkillBoxes = document.querySelectorAll('#projSkillsContainer .proj-skill-check:checked');
+  const related_skills = Array.from(checkedSkillBoxes).map(cb => cb.value);
   
   let completed_at = null;
   let projToSync;
 
   if (editingProject) {
     const existingP = allProjects.find(p => p.id === editingProject);
+    // Stamp completion date if just moved to completed
     if (status === 'completed') {
        completed_at = existingP.completed_at || new Date().toISOString();
     }
     
     allProjects = allProjects.map(p => p.id === editingProject 
-      ? { ...p, name, description, status, related_category, related_skills: selectedSkills, completed_at } 
+      ? { ...p, name, description, status, related_categories, related_skills, completed_at } 
       : p);
     projToSync = allProjects.find(p => p.id === editingProject);
   } else {
@@ -999,8 +1032,8 @@ async function saveProject() {
     
     const newProj = { 
       id: 'proj_' + Date.now(), 
-      name, description, status, related_category, related_skills: selectedSkills, 
-      completed_at, logged_dates: [], created_at: new Date().toISOString(), position: 0 
+      name, description, status, related_categories, related_skills, 
+      position: 0, completed_at, logged_dates: [], created_at: new Date().toISOString() 
     };
     allProjects.push(newProj);
     projToSync = newProj;
@@ -1009,17 +1042,17 @@ async function saveProject() {
   saveLocal('msilas-projs', allProjects);
   
   if (projToSync) {
-    // Construct exactly matching database payload mapping to your schema structure perfectly
+    // Construct exactly matching payload adhering to defined Supabase columns
     const syncPayload = {
       id: projToSync.id,
       user_id: USER_ID, 
       name: projToSync.name,
       description: projToSync.description || '',
       status: projToSync.status,
-      position: projToSync.position !== undefined ? projToSync.position : 0,
-      related_categories: projToSync.related_category ? [projToSync.related_category] : [],
-      related_skills: Array.isArray(projToSync.related_skills) ? projToSync.related_skills : [],
-      logged_dates: Array.isArray(projToSync.logged_dates) ? projToSync.logged_dates : [],
+      position: projToSync.position || 0,
+      related_categories: projToSync.related_categories || [],
+      related_skills: projToSync.related_skills || [],
+      logged_dates: projToSync.logged_dates || [],
       completed_at: projToSync.completed_at || null,
       created_at: projToSync.created_at
     };
@@ -1028,7 +1061,7 @@ async function saveProject() {
 
   closeModal('projectModal');
   editingProject = null;
-  populateSelects(); // Re-populate incase names changed
+  populateSelects(); // Re-populate incase name changed
   renderProjects();
   await syncToAiProductivityTable();
 }
@@ -1533,9 +1566,10 @@ async function init() {
       allProjects = projData.map(p => ({ 
         ...p, 
         description: p.description || '', 
-        related_category: (p.related_categories && p.related_categories.length > 0) ? p.related_categories[0] : (p.related_category || ''),
+        related_categories: p.related_categories || (p.related_category ? [p.related_category] : []),
         related_skills: p.related_skills || [],
         logged_dates: p.logged_dates || [],
+        position: p.position || 0,
         completed_at: p.completed_at || null
       }));
       saveLocal('msilas-projs', allProjects);
@@ -1544,7 +1578,7 @@ async function init() {
     setSynced();
   } catch(e) {
     console.error("Initialization pipeline failure:", e);
-    setOffline(e.message || "Initialization Error");
+    setOffline(e);
   }
 
   buildMap();
