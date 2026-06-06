@@ -267,6 +267,21 @@
   </div>
 </div>
 
+<div class="modal-overlay" id="editCatModal">
+  <div class="modal">
+    <div class="modal-title">Edit Category</div>
+    <label class="modal-label">Category name</label>
+    <input type="text" class="modal-input" id="editCatName" placeholder="e.g. Podcast, Prayer, Exercise..." maxlength="30">
+    <label class="modal-label">Pick an icon</label>
+    <div class="emoji-picker" id="editEmojiPicker"></div>
+    <input type="text" class="modal-input" id="editCatIcon" placeholder="Or type any emoji..." maxlength="4" style="margin-top:8px;">
+    <div class="modal-btns" style="margin-top:4px;">
+      <button class="modal-cancel" onclick="closeModal('editCatModal')">Cancel</button>
+      <button class="modal-save" onclick="saveEditCategory()">Save</button>
+    </div>
+  </div>
+</div>
+
 <div class="modal-overlay" id="projectModal">
   <div class="modal" style="max-height: 85vh; overflow-y: auto;">
     <div class="modal-title" id="projModalTitle">New Project</div>
